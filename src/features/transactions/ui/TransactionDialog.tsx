@@ -1,0 +1,166 @@
+'use client'
+
+import { Controller } from 'react-hook-form'
+import { toast } from 'sonner'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DatePicker } from '@/components/common/DatePicker'
+import { useConfirm } from '@/components/common/ConfirmProvider'
+import { CategoryIcon } from '@/features/transactions/ui/CategoryIcon'
+import { useTransactionForm } from '@/features/transactions/hooks/useTransactionForm'
+import type { ITransaction, TransactionType } from '@/types/finance'
+
+interface ITransactionDialog {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  editingTransaction?: ITransaction | null
+}
+
+export function TransactionDialog({ open, onOpenChange, editingTransaction }: ITransactionDialog) {
+  const confirm = useConfirm()
+
+  const { form, filteredCategories, selectedType, onTypeChange, onSubmit } = useTransactionForm({
+    open,
+    editingTransaction,
+    onSuccess: () => {
+      onOpenChange(false)
+      toast.success(editingTransaction ? 'แก้ไขรายการเรียบร้อยแล้ว' : 'บันทึกรายการเรียบร้อยแล้ว')
+    },
+  })
+
+  const {
+    register,
+    control,
+    formState: { errors, isDirty },
+  } = form
+
+  // ปิด/ยกเลิกฟอร์มขณะมีข้อมูลกรอกค้างไว้ (isDirty) ต้องให้ผู้ใช้ยืนยันก่อนเสมอ กันข้อมูลหายโดยไม่ตั้งใจ
+  const onRequestClose = async () => {
+    if (!isDirty) {
+      onOpenChange(false)
+      return
+    }
+
+    const isConfirmed = await confirm({
+      title: 'ทิ้งข้อมูลที่กรอกไว้?',
+      description: 'ข้อมูลที่กรอกไว้จะหายไปทันทีหากปิดตอนนี้',
+      confirmLabel: 'ทิ้งข้อมูล',
+      tone: 'warning',
+    })
+    if (!isConfirmed) return
+
+    onOpenChange(false)
+    toast.info('ยกเลิกแล้ว')
+  }
+
+  const onDialogOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      onOpenChange(true)
+      return
+    }
+    onRequestClose()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onDialogOpenChange}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{editingTransaction ? 'แก้ไขรายการ' : 'เพิ่มรายการ'}</DialogTitle>
+          <DialogDescription>บันทึกรายรับหรือรายจ่ายของคุณให้ครบถ้วน</DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+          <DialogBody className="flex flex-col gap-4">
+            <Tabs value={selectedType} onValueChange={(value) => onTypeChange(value as TransactionType)}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="income">รายรับ</TabsTrigger>
+                <TabsTrigger value="expense">รายจ่าย</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="amount">จำนวนเงิน</Label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground">
+                    ฿
+                  </span>
+                  <Input
+                    id="amount"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min="0"
+                    className="h-10 pl-7 text-base"
+                    {...register('amount')}
+                  />
+                </div>
+                {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="date">วันที่</Label>
+                <Controller
+                  control={control}
+                  name="date"
+                  render={({ field }) => <DatePicker id="date" value={field.value} onChange={field.onChange} />}
+                />
+                {errors.date && <p className="text-sm text-destructive">{errors.date.message}</p>}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="categoryId">หมวดหมู่</Label>
+              <Controller
+                control={control}
+                name="categoryId"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="categoryId" className="w-full">
+                      <SelectValue placeholder="เลือกหมวดหมู่" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          <CategoryIcon icon={category.icon} />
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.categoryId && <p className="text-sm text-destructive">{errors.categoryId.message}</p>}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="note">บันทึกช่วยจำ</Label>
+              <Textarea id="note" rows={2} placeholder="เช่น ค่าอาหารกลางวันทีมงาน" {...register('note')} />
+              {errors.note && <p className="text-sm text-destructive">{errors.note.message}</p>}
+            </div>
+          </DialogBody>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" size="lg" onClick={onRequestClose}>
+              ยกเลิก
+            </Button>
+            <Button type="submit" size="lg">บันทึก</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
