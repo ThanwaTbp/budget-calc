@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/layout/ThemeProvider'
 import { ConfirmProvider } from '@/components/common/ConfirmProvider'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { AuthProvider } from '@/features/auth/ui/AuthProvider'
 import { DEFAULT_PALETTE, PALETTE_IDS, PALETTE_STORAGE_KEY } from '@/constants/palettes'
 import './globals.css'
 
@@ -58,12 +59,14 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       </head>
       <body className="flex min-h-full flex-col">
         <ThemeProvider>
-          <TooltipProvider delayDuration={200}>
-            <ConfirmProvider>
-              {children}
-              <Toaster position="top-right" richColors duration={2500} />
-            </ConfirmProvider>
-          </TooltipProvider>
+          <AuthProvider>
+            <TooltipProvider delayDuration={200}>
+              <ConfirmProvider>
+                {children}
+                <Toaster position="top-right" richColors duration={2500} />
+              </ConfirmProvider>
+            </TooltipProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

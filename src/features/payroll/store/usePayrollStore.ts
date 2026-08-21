@@ -1,10 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { userScopedStorage } from '@/lib/userScopedStorage'
 import type { IEmployee, IPayrollEntry } from '@/types/finance'
 import { createId } from '@/utils/id'
 import { calcPayrollEntry } from '@/utils/calc'
 import { useTransactionStore } from '@/features/transactions/store/useTransactionStore'
 import type { IEmployeeInput, IPayrollEntryInput } from '@/features/payroll/type'
+import { enqueueSyncOperation } from '@/features/sync/services/syncQueue'
 
 interface IPayrollStore {
   employees: IEmployee[]
@@ -16,6 +18,8 @@ interface IPayrollStore {
   onUpdateEntry: (id: string, input: IPayrollEntryInput) => void
   onDeleteEntry: (id: string) => void
   onReset: () => void
+  // แทนที่ employees/entries ทั้งหมดด้วยข้อมูลจาก Appwrite แบบเงียบ ห้ามยิงกลับเข้าคิว sync (กันลูปอัปโหลดซ้ำ)
+  onReplaceAll: (data: { employees: IEmployee[]; entries: IPayrollEntry[] }) => void
 }
 
 // ประกอบข้อความหมายเหตุของรายจ่ายอัตโนมัติ: 'ค่าจ้าง: <ชื่อ>' ต่อท้ายด้วยหมายเหตุของรอบจ่าย (ถ้ามี)
@@ -41,24 +45,30 @@ export const usePayrollStore = create<IPayrollStore>()(
       employees: [],
       entries: [],
 
-      onCreateEmployee: (input) =>
-        set((state) => ({
-          employees: [
-            ...state.employees,
-            { ...input, id: createId(), createdAt: new Date().toISOString() },
-          ],
-        })),
+      onCreateEmployee: (input) => {
+        const newEmployee: IEmployee = { ...input, id: createId(), createdAt: new Date().toISOString() }
+
+        set((state) => ({ employees: [...state.employees, newEmployee] }))
+        enqueueSyncOperation({ kind: 'employee', action: 'upsert', id: newEmployee.id, payload: newEmployee })
+      },
 
       // เปลี่ยนชื่อพนักงานแล้วต้อง sync หมายเหตุของรายจ่ายอัตโนมัติทุกรอบจ่ายของคนนั้นตามไปด้วย
-      // ไม่งั้นรายจ่ายจะค้างชื่อเดิมจนตามรอยที่มาไม่ได้
+      // ไม่งั้นรายจ่ายจะค้างชื่อเดิมจนตามรอยที่มาไม่ได้ (การ sync แต่ละรายจ่ายจะเข้าคิวเองผ่าน onSyncPayrollExpense)
       onUpdateEmployee: (id, input) => {
         const previousEmployee = get().employees.find((employee) => employee.id === id)
+        let updatedEmployee: IEmployee | null = null
 
         set((state) => ({
-          employees: state.employees.map((employee) =>
-            employee.id === id ? { ...employee, ...input } : employee,
-          ),
+          employees: state.employees.map((employee) => {
+            if (employee.id !== id) return employee
+            updatedEmployee = { ...employee, ...input }
+            return updatedEmployee
+          }),
         }))
+
+        if (updatedEmployee) {
+          enqueueSyncOperation({ kind: 'employee', action: 'upsert', id, payload: updatedEmployee })
+        }
 
         if (previousEmployee && previousEmployee.name !== input.name) {
           get()
@@ -72,12 +82,14 @@ export const usePayrollStore = create<IPayrollStore>()(
         const entriesToRemove = get().entries.filter((entry) => entry.employeeId === id)
         entriesToRemove.forEach((entry) => {
           useTransactionStore.getState().onRemovePayrollExpense(entry.id)
+          enqueueSyncOperation({ kind: 'payrollEntry', action: 'delete', id: entry.id })
         })
 
         set((state) => ({
           employees: state.employees.filter((employee) => employee.id !== id),
           entries: state.entries.filter((entry) => entry.employeeId !== id),
         }))
+        enqueueSyncOperation({ kind: 'employee', action: 'delete', id })
       },
 
       onCreateEntry: (input) => {
@@ -92,6 +104,7 @@ export const usePayrollStore = create<IPayrollStore>()(
         }
 
         set((state) => ({ entries: [...state.entries, entry] }))
+        enqueueSyncOperation({ kind: 'payrollEntry', action: 'upsert', id: entry.id, payload: entry })
         syncPayrollExpense(entry, employee?.name ?? 'ไม่ระบุชื่อ')
       },
 
@@ -111,18 +124,24 @@ export const usePayrollStore = create<IPayrollStore>()(
         set((state) => ({
           entries: state.entries.map((entryItem) => (entryItem.id === id ? updatedEntry : entryItem)),
         }))
+        enqueueSyncOperation({ kind: 'payrollEntry', action: 'upsert', id, payload: updatedEntry })
         syncPayrollExpense(updatedEntry, employee?.name ?? 'ไม่ระบุชื่อ')
       },
 
       onDeleteEntry: (id) => {
         set((state) => ({ entries: state.entries.filter((entry) => entry.id !== id) }))
+        enqueueSyncOperation({ kind: 'payrollEntry', action: 'delete', id })
         useTransactionStore.getState().onRemovePayrollExpense(id)
       },
 
       onReset: () => set({ employees: [], entries: [] }),
+
+      onReplaceAll: (data) => set({ employees: data.employees, entries: data.entries }),
     }),
     {
       name: 'budget-calc:payroll',
+      // แยกพื้นที่เก็บข้อมูลตามบัญชีผู้ใช้ (key จริงคือ '<name>:<userId>')
+      storage: userScopedStorage,
       version: 3,
       // โครงสร้างข้อมูลเปลี่ยนใหม่ทั้งหมดจากเวอร์ชันเดิม (rateType/OT/workUnits และสถานะการทำงานของพนักงานเดิมไม่ใช้แล้ว)
       // จึงทิ้งข้อมูลเก่าทั้งหมดแทนการแปลงทีละ field

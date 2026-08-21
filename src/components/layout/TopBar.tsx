@@ -7,6 +7,8 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { ThemePanel } from '@/components/layout/ThemePanel'
 import { SideNav } from '@/components/layout/SideNav'
+import { UserMenu } from '@/features/auth/ui/UserMenu'
+import { SyncIndicator } from '@/features/sync/ui/SyncIndicator'
 
 export function TopBar() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
@@ -36,8 +38,10 @@ export function TopBar() {
 
       <div className="flex-1" />
 
+      <SyncIndicator />
       <ThemeToggle />
       <ThemePanel />
+      <UserMenu />
     </header>
   )
 }
