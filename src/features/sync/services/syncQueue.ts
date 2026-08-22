@@ -3,10 +3,12 @@
 import { AppwriteException } from 'appwrite'
 import {
   deleteEmployee,
+  deleteLotteryTicket,
   deletePayrollEntry,
   deleteTask,
   deleteTransaction,
   pushEmployee,
+  pushLotteryTicket,
   pushPayrollEntry,
   pushTask,
   pushTransaction,
@@ -15,8 +17,9 @@ import {
 import { useSyncStore } from '@/features/sync/store/useSyncStore'
 import type { IEmployee, IPayrollEntry, ITransaction } from '@/types/finance'
 import type { ITask } from '@/types/planner'
+import type { ILotteryTicket } from '@/types/lottery'
 
-export type SyncEntityKind = 'transaction' | 'employee' | 'payrollEntry' | 'task'
+export type SyncEntityKind = 'transaction' | 'employee' | 'payrollEntry' | 'task' | 'lotteryTicket'
 export type SyncActionKind = 'upsert' | 'delete'
 
 interface ITransactionUpsertOperation {
@@ -71,6 +74,19 @@ interface ITaskDeleteOperation {
   id: string
 }
 
+interface ILotteryTicketUpsertOperation {
+  kind: 'lotteryTicket'
+  action: 'upsert'
+  id: string
+  payload: ILotteryTicket
+}
+
+interface ILotteryTicketDeleteOperation {
+  kind: 'lotteryTicket'
+  action: 'delete'
+  id: string
+}
+
 export type ISyncOperation =
   | ITransactionUpsertOperation
   | ITransactionDeleteOperation
@@ -80,6 +96,8 @@ export type ISyncOperation =
   | IPayrollEntryDeleteOperation
   | ITaskUpsertOperation
   | ITaskDeleteOperation
+  | ILotteryTicketUpsertOperation
+  | ILotteryTicketDeleteOperation
 
 // ดีเลย์ retry แบบ exponential backoff: 2s, 4s, 8s, ... สูงสุด 30s
 const INITIAL_RETRY_DELAY_MS = 2000
@@ -137,6 +155,13 @@ async function processSyncOperation(userId: string, operation: ISyncOperation): 
         await pushTask(userId, operation.payload)
       } else {
         await deleteTask(operation.id)
+      }
+      return
+    case 'lotteryTicket':
+      if (operation.action === 'upsert') {
+        await pushLotteryTicket(userId, operation.payload)
+      } else {
+        await deleteLotteryTicket(operation.id)
       }
       return
   }

@@ -15,6 +15,7 @@ export const APPWRITE_COLLECTIONS = {
   employees: 'bc_employees',
   payrollEntries: 'payrollEntries',
   tasks: 'bc_tasks',
+  lotteryTickets: 'bc_lottery_tickets',
 } as const
 
 export type AppwriteCollectionKey = keyof typeof APPWRITE_COLLECTIONS
@@ -102,5 +103,15 @@ export const APPWRITE_SCHEMA: IAppwriteCollectionSchema[] = [
       { key: 'createdAtIso', type: 'string', required: true, size: 32 },
     ],
     indexes: [{ key: 'date_idx', type: 'key', attributes: ['date'] }],
+  },
+  {
+    collectionId: APPWRITE_COLLECTIONS.lotteryTickets,
+    name: 'Lottery Tickets',
+    attributes: [
+      { key: 'number', type: 'string', required: true, size: 6 },
+      { key: 'note', type: 'string', required: false, size: 160 },
+      { key: 'createdAtIso', type: 'string', required: true, size: 32 },
+    ],
+    indexes: [],
   },
 ]

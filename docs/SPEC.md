@@ -362,3 +362,94 @@ index: `date_idx` (key, `date`)
 - วันที่เลือกอยู่เด่นที่สุดเสมอ (พื้นสีหลักทึบ ตัวอักษรขาว) ตัวบ่งชี้ไม่บดบัง · วันนี้มีขอบเน้น `ring-1 ring-inset ring-primary/60`
 - ช่องวันใช้ `[--cell-size:--spacing(12)]` · ใต้ปฏิทินมี legend อธิบายสัญลักษณ์ (● มีงานค้าง · ● เสร็จแล้ว)
 - `getDayIndicatorTone(summary: IDayTaskSummary): DayIndicatorTone` คืนค่าแค่ `'pending' | 'done'` (ตัดสถานะ 'สำคัญมาก' ออกแล้ว)
+
+---
+
+# ฟีเจอร์ตรวจหวย (Lottery) — เพิ่มใน v6
+
+## แหล่งข้อมูล
+API หวยไทยสาธารณะที่นิยมใช้ (`lotto.api.rayriffy.com`, `api.chnwt.dev`) **ปิดบริการหมดแล้ว** และ API ของสำนักงานสลากฯ ตอบ 503
+จึงดึงจาก **www.lottery.co.th ผ่าน Route Handler ฝั่งเซิร์ฟเวอร์ของ Next** (เลี่ยง CORS และซ่อนรายละเอียดการ parse ไว้ที่เดียว)
+
+### โครงหน้าเว็บที่ยืนยันแล้ว (ตรวจจริงเมื่อสร้างฟีเจอร์)
+- รายการงวดของปี: `https://www.lottery.co.th/year-{ปีพ.ศ.}` → ลิงก์รูปแบบ `/lotto/{d}-{mm}-{yy}` เช่น `16-08-69`, `2-05-69` (**วันไม่ padding เลขศูนย์**)
+- ผลรางวัลเต็มงวด: `https://www.lottery.co.th/lotto/{d}-{mm}-{yy}`
+- ในหน้ามี `<table id="...">` ที่ id คงที่ พร้อม `<caption>` ที่มีเงินรางวัล:
+
+| table id | รางวัล | เงินรางวัล | จำนวนเลข |
+|---|---|---|---|
+| `reward1` | รางวัลที่ 1 | 6,000,000 | 1 |
+| `nearreward1` | ข้างเคียงรางวัลที่ 1 | 100,000 | 2 |
+| `reward2` | รางวัลที่ 2 | 200,000 | 5 |
+| `reward3` | รางวัลที่ 3 | 80,000 | 10 |
+| `reward4` | รางวัลที่ 4 | 40,000 | 50 |
+| `reward5` | รางวัลที่ 5 | 20,000 | 100 |
+| `left3digit` | เลขหน้า 3 ตัว | 4,000 | 2 |
+| `right3digit` | เลขท้าย 3 ตัว | 4,000 | 2 |
+| `right2digit` | เลขท้าย 2 ตัว | 2,000 | 1 |
+
+อ่านเงินรางวัลจาก caption ด้วย `/([\d,]+)\s*บาท/` · อ่านเลขจาก `<strong>` หรือ text node ที่เป็นตัวเลขล้วน
+**เว็บอาจเปลี่ยนโครงเมื่อไหร่ก็ได้** → ถ้า parse ไม่ได้ต้องคืน error ที่บอกผู้ใช้เป็นภาษาไทยว่าดึงผลไม่สำเร็จ **ห้ามคืนผลผิดๆ** และหน้าจอต้องมีทางกรอกผลรางวัลเองเป็น fallback
+
+## กติกาการตรวจรางวัล (ตรรกะหลัก ต้องถูกต้อง 100%)
+เลขสลากไทยมี 6 หลัก
+| รางวัล | เงื่อนไข |
+|---|---|
+| รางวัลที่ 1 / 2 / 3 / 4 / 5 · ข้างเคียงรางวัลที่ 1 | เลข 6 หลัก **ตรงกันทั้งหมด** |
+| เลขหน้า 3 ตัว | **3 หลักแรก** ตรงกับเลขที่ออก |
+| เลขท้าย 3 ตัว | **3 หลักท้าย** ตรงกับเลขที่ออก |
+| เลขท้าย 2 ตัว | **2 หลักท้าย** ตรงกับเลขที่ออก |
+
+หนึ่งใบถูกได้หลายรางวัลพร้อมกัน (เช่น ถูกรางวัลที่ 1 + เลขท้าย 2 ตัว) → ต้องรวมเงินทุกรางวัลที่ถูก
+
+## Route Handler
+- `GET /api/lottery/draws` → `{ draws: [{ id: '16-08-69', label: '16 ส.ค. 2569', date: '2026-08-16' }] }` เรียงงวดใหม่→เก่า
+- `GET /api/lottery/draws/[id]` → ผลรางวัลเต็มงวดตาม `ILotteryDraw`
+- ตั้ง `revalidate` ให้ cache ผลไว้ (ผลรางวัลไม่เปลี่ยนหลังออกแล้ว) กันยิงเว็บต้นทางถี่เกินไป
+- ตั้ง `user-agent` เป็นเบราว์เซอร์ปกติ และมี timeout
+
+## Data model (`src/types/lottery.ts`)
+```ts
+export type LotteryPrizeId =
+  | 'first' | 'nearFirst' | 'second' | 'third' | 'fourth' | 'fifth'
+  | 'frontThree' | 'backThree' | 'backTwo'
+
+export type LotteryMatchMode = 'exact' | 'frontThree' | 'backThree' | 'backTwo'
+
+export interface ILotteryPrize {
+  id: LotteryPrizeId
+  name: string
+  reward: number
+  matchMode: LotteryMatchMode
+  numbers: string[]
+}
+
+export interface ILotteryDraw {
+  id: string        // '16-08-69'
+  label: string     // '16 ส.ค. 2569'
+  date: string      // 'yyyy-MM-dd'
+  prizes: ILotteryPrize[]
+}
+
+export interface ILotteryTicket {
+  id: string
+  number: string    // 6 หลัก
+  note: string
+  createdAt: string
+}
+
+export interface ITicketCheckResult {
+  ticketNumber: string
+  hits: Array<{ prizeId: LotteryPrizeId; prizeName: string; reward: number; matchedNumber: string }>
+  totalReward: number
+}
+```
+
+## Appwrite collection `bc_lottery_tickets`
+| attribute | ชนิด | required |
+|---|---|---|
+| `number` | string(6) | ✓ |
+| `note` | string(160) | – |
+| `createdAtIso` | string(32) | ✓ |
+
+sync ผ่านกลไกเดิม (kind ใหม่ `'lotteryTicket'`) เหมือน task/transaction

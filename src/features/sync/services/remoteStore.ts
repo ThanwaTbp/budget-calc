@@ -5,12 +5,14 @@ import { appwriteClient, isAppwriteConfigured } from '@/lib/appwrite'
 import { APPWRITE_COLLECTIONS, APPWRITE_DATABASE_ID } from '@/constants/appwrite'
 import type { IEmployee, IPayItem, IPayrollEntry, ITransaction, PayItemKind } from '@/types/finance'
 import type { ITask, TaskStatus } from '@/types/planner'
+import type { ILotteryTicket } from '@/types/lottery'
 
 export interface IRemoteSnapshot {
   transactions: ITransaction[]
   employees: IEmployee[]
   entries: IPayrollEntry[]
   tasks: ITask[]
+  lotteryTickets: ILotteryTicket[]
 }
 
 const appwriteDatabases = new Databases(appwriteClient)
@@ -53,6 +55,12 @@ interface ITaskDocument extends Models.Document {
   startTime: string
   endTime: string
   status: string
+  createdAtIso: string
+}
+
+interface ILotteryTicketDocument extends Models.Document {
+  number: string
+  note: string
   createdAtIso: string
 }
 
@@ -179,6 +187,25 @@ function mapTaskEntityToDocumentData(task: ITask): Omit<ITaskDocument, keyof Mod
   }
 }
 
+function mapLotteryTicketDocumentToEntity(document: ILotteryTicketDocument): ILotteryTicket {
+  return {
+    id: document.$id,
+    number: document.number,
+    note: document.note ?? '',
+    createdAt: document.createdAtIso,
+  }
+}
+
+function mapLotteryTicketEntityToDocumentData(
+  ticket: ILotteryTicket,
+): Omit<ILotteryTicketDocument, keyof Models.Document> {
+  return {
+    number: ticket.number,
+    note: ticket.note,
+    createdAtIso: ticket.createdAt,
+  }
+}
+
 // วนดึงเอกสารทั้งหมดของ collection ด้วย cursor pagination จนครบ (listDocuments คืนแค่ 25 แถวแรกถ้าไม่ระบุ limit)
 async function fetchAllDocuments<Document extends Models.Document>(collectionId: string): Promise<Document[]> {
   const documents: Document[] = []
@@ -217,18 +244,21 @@ export async function pullSnapshot(userId: string): Promise<IRemoteSnapshot> {
     throw new Error('ต้องระบุผู้ใช้ก่อนดึงข้อมูล')
   }
 
-  const [transactionDocuments, employeeDocuments, payrollEntryDocuments, taskDocuments] = await Promise.all([
-    fetchAllDocuments<ITransactionDocument>(APPWRITE_COLLECTIONS.transactions),
-    fetchAllDocuments<IEmployeeDocument>(APPWRITE_COLLECTIONS.employees),
-    fetchAllDocuments<IPayrollEntryDocument>(APPWRITE_COLLECTIONS.payrollEntries),
-    fetchAllDocuments<ITaskDocument>(APPWRITE_COLLECTIONS.tasks),
-  ])
+  const [transactionDocuments, employeeDocuments, payrollEntryDocuments, taskDocuments, lotteryTicketDocuments] =
+    await Promise.all([
+      fetchAllDocuments<ITransactionDocument>(APPWRITE_COLLECTIONS.transactions),
+      fetchAllDocuments<IEmployeeDocument>(APPWRITE_COLLECTIONS.employees),
+      fetchAllDocuments<IPayrollEntryDocument>(APPWRITE_COLLECTIONS.payrollEntries),
+      fetchAllDocuments<ITaskDocument>(APPWRITE_COLLECTIONS.tasks),
+      fetchAllDocuments<ILotteryTicketDocument>(APPWRITE_COLLECTIONS.lotteryTickets),
+    ])
 
   return {
     transactions: transactionDocuments.map(mapTransactionDocumentToEntity),
     employees: employeeDocuments.map(mapEmployeeDocumentToEntity),
     entries: payrollEntryDocuments.map(mapPayrollEntryDocumentToEntity),
     tasks: taskDocuments.map(mapTaskDocumentToEntity),
+    lotteryTickets: lotteryTicketDocuments.map(mapLotteryTicketDocumentToEntity),
   }
 }
 
@@ -304,12 +334,31 @@ export async function deleteTask(id: string): Promise<void> {
   })
 }
 
+export async function pushLotteryTicket(userId: string, ticket: ILotteryTicket): Promise<void> {
+  await appwriteDatabases.upsertDocument<ILotteryTicketDocument>({
+    databaseId: APPWRITE_DATABASE_ID,
+    collectionId: APPWRITE_COLLECTIONS.lotteryTickets,
+    documentId: ticket.id,
+    data: mapLotteryTicketEntityToDocumentData(ticket),
+    permissions: buildOwnerPermissions(userId),
+  })
+}
+
+export async function deleteLotteryTicket(id: string): Promise<void> {
+  await appwriteDatabases.deleteDocument({
+    databaseId: APPWRITE_DATABASE_ID,
+    collectionId: APPWRITE_COLLECTIONS.lotteryTickets,
+    documentId: id,
+  })
+}
+
 // อัปโหลด snapshot ทั้งก้อนขึ้น Appwrite ใช้ตอนย้ายข้อมูลครั้งแรก (ทยอยทีละชุดกันโดน rate limit)
 export async function pushSnapshot(userId: string, snapshot: IRemoteSnapshot): Promise<void> {
   await pushInBatches(snapshot.transactions, (transaction) => pushTransaction(userId, transaction))
   await pushInBatches(snapshot.employees, (employee) => pushEmployee(userId, employee))
   await pushInBatches(snapshot.entries, (entry) => pushPayrollEntry(userId, entry))
   await pushInBatches(snapshot.tasks, (task) => pushTask(userId, task))
+  await pushInBatches(snapshot.lotteryTickets, (ticket) => pushLotteryTicket(userId, ticket))
 }
 
 export function isRemoteReady(): boolean {
