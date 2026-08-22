@@ -7,13 +7,14 @@ import {
 } from '@/lib/userScopedStorage'
 import { useTransactionStore } from '@/features/transactions/store/useTransactionStore'
 import { usePayrollStore } from '@/features/payroll/store/usePayrollStore'
+import { usePlannerStore } from '@/features/planner/store/usePlannerStore'
 import { useSyncStore } from '@/features/sync/store/useSyncStore'
 import { clearSyncQueue, setSyncUserId } from '@/features/sync/services/syncQueue'
 import { isRemoteReady, pushSnapshot, toThaiSyncErrorMessage } from '@/features/sync/services/remoteStore'
 import type { IRemoteSnapshot } from '@/features/sync/services/remoteStore'
 
-// ชื่อ store ทั้งสองที่ผูกกับ storage แยกตามบัญชีผู้ใช้ ต้องตรงกับ `name` ที่ตั้งไว้ใน persist ของแต่ละ store เป๊ะ
-const SCOPED_STORE_NAMES = ['budget-calc:transactions', 'budget-calc:payroll']
+// ชื่อ store ทั้งหมดที่ผูกกับ storage แยกตามบัญชีผู้ใช้ ต้องตรงกับ `name` ที่ตั้งไว้ใน persist ของแต่ละ store เป๊ะ
+const SCOPED_STORE_NAMES = ['budget-calc:transactions', 'budget-calc:payroll', 'budget-calc:planner']
 
 interface IApplyUserDataScopeOptions {
   // ตั้งเป็น true เฉพาะตอนสมัครสำเร็จหรือล็อกอินครั้งแรก เพื่อย้ายข้อมูลที่บันทึกไว้ตอนยังไม่ล็อกอินมาเป็นของบัญชีนี้
@@ -33,6 +34,7 @@ export async function applyUserDataScope(
   suspendStorageWrites()
   useTransactionStore.getState().onReset()
   usePayrollStore.getState().onReset()
+  usePlannerStore.getState().onReset()
   resumeStorageWrites()
 
   if (options.migrateGuestData && userId) {
@@ -44,6 +46,7 @@ export async function applyUserDataScope(
 
   await useTransactionStore.persist.rehydrate()
   await usePayrollStore.persist.rehydrate()
+  await usePlannerStore.persist.rehydrate()
 
   // จากจุดนี้หน้าจอวาดข้อมูลจาก localStorage cache ได้ทันทีแล้ว ที่เหลือทำต่อแบบ async เบื้องหลัง
   // ผูกคิว sync เข้ากับผู้ใช้คนปัจจุบันก่อนเสมอ (null = ออกจากระบบ/โหมด guest ไม่ต้อง sync ขึ้น cloud)
@@ -74,17 +77,20 @@ async function syncRemoteSnapshotInBackground(userId: string): Promise<void> {
   const isRemoteEmpty =
     remoteSnapshot.transactions.length === 0 &&
     remoteSnapshot.employees.length === 0 &&
-    remoteSnapshot.entries.length === 0
+    remoteSnapshot.entries.length === 0 &&
+    remoteSnapshot.tasks.length === 0
 
   const localSnapshot: IRemoteSnapshot = {
     transactions: useTransactionStore.getState().transactions,
     employees: usePayrollStore.getState().employees,
     entries: usePayrollStore.getState().entries,
+    tasks: usePlannerStore.getState().tasks,
   }
   const hasLocalData =
     localSnapshot.transactions.length > 0 ||
     localSnapshot.employees.length > 0 ||
-    localSnapshot.entries.length > 0
+    localSnapshot.entries.length > 0 ||
+    localSnapshot.tasks.length > 0
 
   if (isRemoteEmpty && hasLocalData) {
     try {
@@ -99,4 +105,5 @@ async function syncRemoteSnapshotInBackground(userId: string): Promise<void> {
 
   useTransactionStore.getState().onReplaceAll(remoteSnapshot.transactions)
   usePayrollStore.getState().onReplaceAll({ employees: remoteSnapshot.employees, entries: remoteSnapshot.entries })
+  usePlannerStore.getState().onReplaceAll(remoteSnapshot.tasks)
 }

@@ -4,11 +4,13 @@ import { AppwriteException, Databases, type Models, Permission, Query, Role } fr
 import { appwriteClient, isAppwriteConfigured } from '@/lib/appwrite'
 import { APPWRITE_COLLECTIONS, APPWRITE_DATABASE_ID } from '@/constants/appwrite'
 import type { IEmployee, IPayItem, IPayrollEntry, ITransaction, PayItemKind } from '@/types/finance'
+import type { ITask, TaskStatus } from '@/types/planner'
 
 export interface IRemoteSnapshot {
   transactions: ITransaction[]
   employees: IEmployee[]
   entries: IPayrollEntry[]
+  tasks: ITask[]
 }
 
 const appwriteDatabases = new Databases(appwriteClient)
@@ -41,6 +43,16 @@ interface IPayrollEntryDocument extends Models.Document {
   date: string
   note: string
   itemsJson: string
+  createdAtIso: string
+}
+
+interface ITaskDocument extends Models.Document {
+  title: string
+  detail: string
+  date: string
+  startTime: string
+  endTime: string
+  status: string
   createdAtIso: string
 }
 
@@ -138,6 +150,35 @@ function mapPayrollEntryEntityToDocumentData(entry: IPayrollEntry): Omit<IPayrol
   }
 }
 
+function toTaskStatus(status: string): TaskStatus {
+  return status === 'done' ? 'done' : 'todo'
+}
+
+function mapTaskDocumentToEntity(document: ITaskDocument): ITask {
+  return {
+    id: document.$id,
+    title: document.title,
+    detail: document.detail ?? '',
+    date: document.date,
+    startTime: document.startTime ?? '',
+    endTime: document.endTime ?? '',
+    status: toTaskStatus(document.status),
+    createdAt: document.createdAtIso,
+  }
+}
+
+function mapTaskEntityToDocumentData(task: ITask): Omit<ITaskDocument, keyof Models.Document> {
+  return {
+    title: task.title,
+    detail: task.detail,
+    date: task.date,
+    startTime: task.startTime,
+    endTime: task.endTime,
+    status: task.status,
+    createdAtIso: task.createdAt,
+  }
+}
+
 // วนดึงเอกสารทั้งหมดของ collection ด้วย cursor pagination จนครบ (listDocuments คืนแค่ 25 แถวแรกถ้าไม่ระบุ limit)
 async function fetchAllDocuments<Document extends Models.Document>(collectionId: string): Promise<Document[]> {
   const documents: Document[] = []
@@ -176,16 +217,18 @@ export async function pullSnapshot(userId: string): Promise<IRemoteSnapshot> {
     throw new Error('ต้องระบุผู้ใช้ก่อนดึงข้อมูล')
   }
 
-  const [transactionDocuments, employeeDocuments, payrollEntryDocuments] = await Promise.all([
+  const [transactionDocuments, employeeDocuments, payrollEntryDocuments, taskDocuments] = await Promise.all([
     fetchAllDocuments<ITransactionDocument>(APPWRITE_COLLECTIONS.transactions),
     fetchAllDocuments<IEmployeeDocument>(APPWRITE_COLLECTIONS.employees),
     fetchAllDocuments<IPayrollEntryDocument>(APPWRITE_COLLECTIONS.payrollEntries),
+    fetchAllDocuments<ITaskDocument>(APPWRITE_COLLECTIONS.tasks),
   ])
 
   return {
     transactions: transactionDocuments.map(mapTransactionDocumentToEntity),
     employees: employeeDocuments.map(mapEmployeeDocumentToEntity),
     entries: payrollEntryDocuments.map(mapPayrollEntryDocumentToEntity),
+    tasks: taskDocuments.map(mapTaskDocumentToEntity),
   }
 }
 
@@ -243,11 +286,30 @@ export async function deletePayrollEntry(id: string): Promise<void> {
   })
 }
 
+export async function pushTask(userId: string, task: ITask): Promise<void> {
+  await appwriteDatabases.upsertDocument<ITaskDocument>({
+    databaseId: APPWRITE_DATABASE_ID,
+    collectionId: APPWRITE_COLLECTIONS.tasks,
+    documentId: task.id,
+    data: mapTaskEntityToDocumentData(task),
+    permissions: buildOwnerPermissions(userId),
+  })
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  await appwriteDatabases.deleteDocument({
+    databaseId: APPWRITE_DATABASE_ID,
+    collectionId: APPWRITE_COLLECTIONS.tasks,
+    documentId: id,
+  })
+}
+
 // อัปโหลด snapshot ทั้งก้อนขึ้น Appwrite ใช้ตอนย้ายข้อมูลครั้งแรก (ทยอยทีละชุดกันโดน rate limit)
 export async function pushSnapshot(userId: string, snapshot: IRemoteSnapshot): Promise<void> {
   await pushInBatches(snapshot.transactions, (transaction) => pushTransaction(userId, transaction))
   await pushInBatches(snapshot.employees, (employee) => pushEmployee(userId, employee))
   await pushInBatches(snapshot.entries, (entry) => pushPayrollEntry(userId, entry))
+  await pushInBatches(snapshot.tasks, (task) => pushTask(userId, task))
 }
 
 export function isRemoteReady(): boolean {

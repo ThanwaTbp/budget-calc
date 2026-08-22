@@ -279,3 +279,86 @@ type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline' | 'disable
 ```
 `disabled` = ยังไม่ได้ตั้งค่า Appwrite หรือยังไม่ล็อกอิน → แอปทำงานแบบ local อย่างเดียวเหมือนเดิม
 มีตัวบ่งชี้บน TopBar บอกสถานะ + เวลาที่ sync ล่าสุด + ปุ่มลองใหม่ตอน error
+
+---
+
+# ฟีเจอร์วางแผนงาน (Planner) — เพิ่มใน v5, ปรับ UX ใน v6
+
+## เลือกใช้ `react-day-picker@10` (มีอยู่แล้วในโปรเจค เป็นฐานของ shadcn Calendar)
+เหตุผล: แอปมี **4 ชุดสีให้ผู้ใช้สลับ + light/dark** ถ้าใช้ FullCalendar / react-big-calendar / Schedule-X จะต้องสู้กับ CSS ของ lib เองตลอด
+react-day-picker override `components.Day` / `DayButton` ได้ จึงวาดตัวบ่งชี้งานในช่องวันที่ด้วย Tailwind token ของเราเองได้ 100% และไม่เพิ่ม dependency ใหม่
+
+## Data model (`src/types/planner.ts`)
+```ts
+export type TaskStatus = 'todo' | 'done'
+
+export interface ITask {
+  id: string
+  title: string
+  detail: string
+  date: string        // 'yyyy-MM-dd'
+  startTime: string   // 'HH:mm' — ว่าง = งานทั้งวัน (ไม่ระบุเวลา)
+  endTime: string     // 'HH:mm' — ว่างได้ (แต่ถ้ากรอกต้องมี startTime ด้วย)
+  status: TaskStatus
+  createdAt: string
+}
+```
+ไม่มีฟีเจอร์ "ความสำคัญ (priority)" อีกต่อไป — ถูกตัดออกทั้งหมด (type, field, UI, Appwrite attribute)
+
+## เลือกเวลาด้วย `TimePicker` (`@/components/common/TimePicker`)
+Popover มีปุ่มลัด (เช้า/เที่ยง/บ่าย/เย็น) + คอลัมน์ชั่วโมง (00–23) + คอลัมน์นาที (ทีละ 15 นาที) + ปุ่มล้างเวลา (`clearable`)
+`TaskDialog` แสดงช่องเวลาเริ่ม/สิ้นสุดคู่กันตลอดเวลา (`grid grid-cols-2 gap-4`) ไม่มีสวิตช์เปิด/ปิด — ปล่อยว่างทั้งคู่ = งานทั้งวัน
+
+## Store contract — `src/features/planner/store/usePlannerStore.ts`
+```ts
+export interface ITaskInput {
+  title: string; detail: string; date: string
+  startTime: string; endTime: string
+}
+
+interface IPlannerStore {
+  tasks: ITask[]
+  onCreate: (input: ITaskInput) => void
+  onUpdate: (id: string, input: ITaskInput) => void
+  onDelete: (id: string) => void
+  onToggleStatus: (id: string) => void
+  onReset: () => void
+  onReplaceAll: (tasks: ITask[]) => void   // ใช้ตอนดึงจาก cloud ห้าม enqueue กลับ
+}
+```
+persist key `budget-calc:planner` · ใช้ `userScopedStorage` เหมือน store อื่น · ทุก action (ยกเว้น `onReset` / `onReplaceAll`) ต้อง enqueue งาน sync
+
+## Appwrite collection `bc_tasks`
+| attribute | ชนิด | required |
+|---|---|---|
+| `title` | string(160) | ✓ |
+| `detail` | string(1000) | – |
+| `date` | string(10) | ✓ |
+| `startTime` | string(5) | – |
+| `endTime` | string(5) | – |
+| `status` | string(16) | ✓ |
+| `createdAtIso` | string(32) | ✓ |
+
+index: `date_idx` (key, `date`)
+**ห้ามใช้ id `tasks` เฉยๆ** เพราะ database นี้มี collection ของโปรเจคเก่าปนอยู่ ต้องมี prefix `bc_` เสมอ
+
+## มุมมองลิสต์งาน — รายวัน / รายเดือน
+ปุ่มสลับมุมมองเหนือลิสต์ (`PlannerViewToggle`): **รายวัน** (งานของวันที่เลือกบนปฏิทิน, เดิม) / **รายเดือน** (งานทั้งเดือนที่กำลังดูบนปฏิทิน จัดกลุ่มตามวันด้วย `buildMonthGroups`)
+- รายเดือน: หัวกลุ่มเป็นวันที่แบบไทย + จำนวนงาน เรียงวันเก่า→ใหม่ (ในวันเรียงตามเวลา งานไม่ระบุเวลาไปท้าย) · วันนี้เน้น `text-primary font-semibold` + ป้าย 'วันนี้' · กดหัวกลุ่มเลือกวันนั้นบนปฏิทินด้วย · แสดง 10 วันแรกก่อนแล้วกด 'แสดงเพิ่ม'
+- แท็บกรองสถานะ (ทั้งหมด/ค้างอยู่/เสร็จแล้ว) ใช้ร่วมกันทั้งสองมุมมอง
+- หัวข้อของแผงเปลี่ยนตามมุมมอง (รายวัน = ชื่อวัน · รายเดือน = ชื่อเดือน พ.ศ.)
+
+## จัดการสถานะ/แก้ไข/ลบงาน — `TaskListItem`
+แต่ละงานมีปุ่ม 3 ปุ่มเรียงกันชัดเจนแทนปุ่มวงกลมสลับสถานะและ dropdown เดิม (desktop เรียงแนวนอนท้ายแถว, mobile เรียงเต็มความกว้างใต้ชื่องาน):
+- **ทำเสร็จแล้ว** (`Check`, `variant='outline'`) / งานที่เสร็จแล้วสลับเป็น **ย้ายกลับเป็นค้างอยู่** (`Undo2`) — ทั้งสองทาง `useConfirm()` tone `'default'` ก่อนเสมอ
+- **แก้ไข** (`Pencil`, `variant='outline'`)
+- **ลบ** (`Trash2`, `variant='destructive'`) — `useConfirm()` tone `'danger'`
+งานที่ทำเสร็จแล้ว → ข้อความ `line-through text-muted-foreground`
+
+## ตัวบ่งชี้งานบนปฏิทิน (`PlannerCalendar`)
+- วันที่มีงานค้าง → พื้นหลังช่อง `bg-accent` ตัวเลข `font-semibold text-accent-foreground` + แถบเล็ก `h-1 w-5 rounded-full bg-primary` ใต้ตัวเลข
+- วันที่งานเสร็จหมดแล้ว → แถบเป็น `bg-income` ตัวเลขสีปกติ
+- มีตัวเลขจำนวนงานมุมขวาบนของช่อง (`absolute top-0.5 right-0.5 text-[0.625rem] leading-none font-semibold`) เมื่อมีงานตั้งแต่ 1 ชิ้น
+- วันที่เลือกอยู่เด่นที่สุดเสมอ (พื้นสีหลักทึบ ตัวอักษรขาว) ตัวบ่งชี้ไม่บดบัง · วันนี้มีขอบเน้น `ring-1 ring-inset ring-primary/60`
+- ช่องวันใช้ `[--cell-size:--spacing(12)]` · ใต้ปฏิทินมี legend อธิบายสัญลักษณ์ (● มีงานค้าง · ● เสร็จแล้ว)
+- `getDayIndicatorTone(summary: IDayTaskSummary): DayIndicatorTone` คืนค่าแค่ `'pending' | 'done'` (ตัดสถานะ 'สำคัญมาก' ออกแล้ว)

@@ -4,16 +4,19 @@ import { AppwriteException } from 'appwrite'
 import {
   deleteEmployee,
   deletePayrollEntry,
+  deleteTask,
   deleteTransaction,
   pushEmployee,
   pushPayrollEntry,
+  pushTask,
   pushTransaction,
   toThaiSyncErrorMessage,
 } from '@/features/sync/services/remoteStore'
 import { useSyncStore } from '@/features/sync/store/useSyncStore'
 import type { IEmployee, IPayrollEntry, ITransaction } from '@/types/finance'
+import type { ITask } from '@/types/planner'
 
-export type SyncEntityKind = 'transaction' | 'employee' | 'payrollEntry'
+export type SyncEntityKind = 'transaction' | 'employee' | 'payrollEntry' | 'task'
 export type SyncActionKind = 'upsert' | 'delete'
 
 interface ITransactionUpsertOperation {
@@ -55,6 +58,19 @@ interface IPayrollEntryDeleteOperation {
   id: string
 }
 
+interface ITaskUpsertOperation {
+  kind: 'task'
+  action: 'upsert'
+  id: string
+  payload: ITask
+}
+
+interface ITaskDeleteOperation {
+  kind: 'task'
+  action: 'delete'
+  id: string
+}
+
 export type ISyncOperation =
   | ITransactionUpsertOperation
   | ITransactionDeleteOperation
@@ -62,6 +78,8 @@ export type ISyncOperation =
   | IEmployeeDeleteOperation
   | IPayrollEntryUpsertOperation
   | IPayrollEntryDeleteOperation
+  | ITaskUpsertOperation
+  | ITaskDeleteOperation
 
 // ดีเลย์ retry แบบ exponential backoff: 2s, 4s, 8s, ... สูงสุด 30s
 const INITIAL_RETRY_DELAY_MS = 2000
@@ -112,6 +130,13 @@ async function processSyncOperation(userId: string, operation: ISyncOperation): 
         await pushPayrollEntry(userId, operation.payload)
       } else {
         await deletePayrollEntry(operation.id)
+      }
+      return
+    case 'task':
+      if (operation.action === 'upsert') {
+        await pushTask(userId, operation.payload)
+      } else {
+        await deleteTask(operation.id)
       }
       return
   }

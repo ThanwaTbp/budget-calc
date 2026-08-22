@@ -14,6 +14,7 @@ export const APPWRITE_COLLECTIONS = {
   transactions: 'bc_transactions',
   employees: 'bc_employees',
   payrollEntries: 'payrollEntries',
+  tasks: 'bc_tasks',
 } as const
 
 export type AppwriteCollectionKey = keyof typeof APPWRITE_COLLECTIONS
@@ -87,5 +88,19 @@ export const APPWRITE_SCHEMA: IAppwriteCollectionSchema[] = [
       { key: 'employeeId_idx', type: 'key', attributes: ['employeeId'] },
       { key: 'date_idx', type: 'key', attributes: ['date'] },
     ],
+  },
+  {
+    collectionId: APPWRITE_COLLECTIONS.tasks,
+    name: 'Tasks',
+    attributes: [
+      { key: 'title', type: 'string', required: true, size: 160 },
+      { key: 'detail', type: 'string', required: false, size: 1000 },
+      { key: 'date', type: 'string', required: true, size: 10 },
+      { key: 'startTime', type: 'string', required: false, size: 5 },
+      { key: 'endTime', type: 'string', required: false, size: 5 },
+      { key: 'status', type: 'string', required: true, size: 16 },
+      { key: 'createdAtIso', type: 'string', required: true, size: 32 },
+    ],
+    indexes: [{ key: 'date_idx', type: 'key', attributes: ['date'] }],
   },
 ]
