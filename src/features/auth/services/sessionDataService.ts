@@ -9,6 +9,8 @@ import { useTransactionStore } from '@/features/transactions/store/useTransactio
 import { usePayrollStore } from '@/features/payroll/store/usePayrollStore'
 import { usePlannerStore } from '@/features/planner/store/usePlannerStore'
 import { useLotteryTicketStore } from '@/features/lottery/store/useLotteryTicketStore'
+import { useBudgetStore } from '@/features/budget/store/useBudgetStore'
+import { useRecurringStore } from '@/features/recurring/store/useRecurringStore'
 import { useSyncStore } from '@/features/sync/store/useSyncStore'
 import { clearSyncQueue, setSyncUserId } from '@/features/sync/services/syncQueue'
 import { isRemoteReady, pushSnapshot, toThaiSyncErrorMessage } from '@/features/sync/services/remoteStore'
@@ -20,6 +22,8 @@ const SCOPED_STORE_NAMES = [
   'budget-calc:payroll',
   'budget-calc:planner',
   'budget-calc:lottery',
+  'budget-calc:budgets',
+  'budget-calc:recurring',
 ]
 
 interface IApplyUserDataScopeOptions {
@@ -42,6 +46,8 @@ export async function applyUserDataScope(
   usePayrollStore.getState().onReset()
   usePlannerStore.getState().onReset()
   useLotteryTicketStore.getState().onReset()
+  useBudgetStore.getState().onReset()
+  useRecurringStore.getState().onReset()
   resumeStorageWrites()
 
   if (options.migrateGuestData && userId) {
@@ -55,6 +61,8 @@ export async function applyUserDataScope(
   await usePayrollStore.persist.rehydrate()
   await usePlannerStore.persist.rehydrate()
   await useLotteryTicketStore.persist.rehydrate()
+  await useBudgetStore.persist.rehydrate()
+  await useRecurringStore.persist.rehydrate()
 
   // จากจุดนี้หน้าจอวาดข้อมูลจาก localStorage cache ได้ทันทีแล้ว ที่เหลือทำต่อแบบ async เบื้องหลัง
   // ผูกคิว sync เข้ากับผู้ใช้คนปัจจุบันก่อนเสมอ (null = ออกจากระบบ/โหมด guest ไม่ต้อง sync ขึ้น cloud)
@@ -87,7 +95,9 @@ async function syncRemoteSnapshotInBackground(userId: string): Promise<void> {
     remoteSnapshot.employees.length === 0 &&
     remoteSnapshot.entries.length === 0 &&
     remoteSnapshot.tasks.length === 0 &&
-    remoteSnapshot.lotteryTickets.length === 0
+    remoteSnapshot.lotteryTickets.length === 0 &&
+    remoteSnapshot.budgets.length === 0 &&
+    remoteSnapshot.recurringItems.length === 0
 
   const localSnapshot: IRemoteSnapshot = {
     transactions: useTransactionStore.getState().transactions,
@@ -95,13 +105,17 @@ async function syncRemoteSnapshotInBackground(userId: string): Promise<void> {
     entries: usePayrollStore.getState().entries,
     tasks: usePlannerStore.getState().tasks,
     lotteryTickets: useLotteryTicketStore.getState().tickets,
+    budgets: useBudgetStore.getState().budgets,
+    recurringItems: useRecurringStore.getState().items,
   }
   const hasLocalData =
     localSnapshot.transactions.length > 0 ||
     localSnapshot.employees.length > 0 ||
     localSnapshot.entries.length > 0 ||
     localSnapshot.tasks.length > 0 ||
-    localSnapshot.lotteryTickets.length > 0
+    localSnapshot.lotteryTickets.length > 0 ||
+    localSnapshot.budgets.length > 0 ||
+    localSnapshot.recurringItems.length > 0
 
   if (isRemoteEmpty && hasLocalData) {
     try {
@@ -118,4 +132,6 @@ async function syncRemoteSnapshotInBackground(userId: string): Promise<void> {
   usePayrollStore.getState().onReplaceAll({ employees: remoteSnapshot.employees, entries: remoteSnapshot.entries })
   usePlannerStore.getState().onReplaceAll(remoteSnapshot.tasks)
   useLotteryTicketStore.getState().onReplaceAll(remoteSnapshot.lotteryTickets)
+  useBudgetStore.getState().onReplaceAll(remoteSnapshot.budgets)
+  useRecurringStore.getState().onReplaceAll(remoteSnapshot.recurringItems)
 }

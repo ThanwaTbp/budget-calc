@@ -32,7 +32,7 @@ export function useLoginForm() {
     try {
       await onLogin(values)
       toast.success('เข้าสู่ระบบสำเร็จ')
-      router.replace('/')
+      router.replace('/transactions')
     } catch (error) {
       form.setError('root', { message: toThaiAuthErrorMessage(error) })
     } finally {

@@ -40,7 +40,7 @@ export function useRegisterForm() {
     try {
       await onRegister(values)
       toast.success('สมัครสมาชิกสำเร็จ')
-      router.replace('/')
+      router.replace('/transactions')
     } catch (error) {
       form.setError('root', { message: toThaiAuthErrorMessage(error) })
     } finally {

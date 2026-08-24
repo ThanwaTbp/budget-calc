@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EmptyState } from '@/components/common/EmptyState'
 import { parseLocalDateString } from '@/features/planner/hooks/usePlannerBoard'
+import { DayWeatherBadge } from '@/features/planner/ui/DayWeatherBadge'
 import { TaskListItem } from '@/features/planner/ui/TaskListItem'
 import type { IMonthTaskGroup, PlannerStatusFilter } from '@/features/planner/type'
+import type { ITaskWeather } from '@/features/weather/hooks/useTaskWeather'
 import type { ITask } from '@/types/planner'
 import { cn } from '@/lib/utils'
 
@@ -24,6 +26,7 @@ interface IMonthTaskList {
   onSelectDate: (date: string) => void
   onCreateTask: () => void
   onEditTask: (task: ITask) => void
+  getWeatherForDate: (date: string) => ITaskWeather | null
 }
 
 const groupHeaderFormatter = new Intl.DateTimeFormat('th-TH', {
@@ -37,30 +40,35 @@ interface IMonthTaskGroupSection {
   group: IMonthTaskGroup
   onSelectDate: (date: string) => void
   onEditTask: (task: ITask) => void
+  weather: ITaskWeather | null
 }
 
 // หัวข้อของหนึ่งวัน กดแล้วเลือกวันนั้นบนปฏิทินด้วย วันนี้ให้หัวข้อเน้นสีหลักพร้อมป้าย 'วันนี้'
-function MonthTaskGroupSection({ group, onSelectDate, onEditTask }: IMonthTaskGroupSection) {
+function MonthTaskGroupSection({ group, onSelectDate, onEditTask, weather }: IMonthTaskGroupSection) {
   const groupTitle = groupHeaderFormatter.format(parseLocalDateString(group.date))
 
   return (
     <div className="flex flex-col gap-2">
-      <button
-        type="button"
-        onClick={() => onSelectDate(group.date)}
-        className={cn(
-          'flex flex-wrap items-center gap-2 text-left text-sm hover:underline',
-          group.isToday ? 'font-semibold text-primary' : 'font-medium text-foreground',
-        )}
-      >
-        <span>{groupTitle}</span>
-        {group.isToday && (
-          <Badge variant="outline" className="border-transparent bg-primary/10 text-primary">
-            วันนี้
-          </Badge>
-        )}
-        <span className="text-xs font-normal text-muted-foreground">{group.tasks.length} งาน</span>
-      </button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => onSelectDate(group.date)}
+          className={cn(
+            'flex flex-wrap items-center gap-2 text-left text-sm hover:underline',
+            group.isToday ? 'font-semibold text-primary' : 'font-medium text-foreground',
+          )}
+        >
+          <span>{groupTitle}</span>
+          {group.isToday && (
+            <Badge variant="outline" className="border-transparent bg-primary/10 text-primary">
+              วันนี้
+            </Badge>
+          )}
+          <span className="text-xs font-normal text-muted-foreground">{group.tasks.length} งาน</span>
+        </button>
+
+        <DayWeatherBadge weather={weather} variant="compact" />
+      </div>
 
       <div className="flex flex-col gap-2">
         {group.tasks.map((task) => (
@@ -81,6 +89,7 @@ export function MonthTaskList({
   onSelectDate,
   onCreateTask,
   onEditTask,
+  getWeatherForDate,
 }: IMonthTaskList) {
   const [isShowingAllGroups, setIsShowingAllGroups] = useState(false)
 
@@ -122,7 +131,13 @@ export function MonthTaskList({
       ) : (
         <div className="flex flex-col gap-4">
           {visibleGroups.map((group) => (
-            <MonthTaskGroupSection key={group.date} group={group} onSelectDate={onSelectDate} onEditTask={onEditTask} />
+            <MonthTaskGroupSection
+              key={group.date}
+              group={group}
+              onSelectDate={onSelectDate}
+              onEditTask={onEditTask}
+              weather={getWeatherForDate(group.date)}
+            />
           ))}
 
           {hasMoreGroups && (

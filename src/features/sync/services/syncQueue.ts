@@ -2,14 +2,18 @@
 // ห้าม import useTransactionStore/usePayrollStore ที่นี่ (กัน circular import) — รับ payload เป็น entity ล้วนจาก store เท่านั้น
 import { AppwriteException } from 'appwrite'
 import {
+  deleteBudget,
   deleteEmployee,
   deleteLotteryTicket,
   deletePayrollEntry,
+  deleteRecurringItem,
   deleteTask,
   deleteTransaction,
+  pushBudget,
   pushEmployee,
   pushLotteryTicket,
   pushPayrollEntry,
+  pushRecurringItem,
   pushTask,
   pushTransaction,
   toThaiSyncErrorMessage,
@@ -18,8 +22,17 @@ import { useSyncStore } from '@/features/sync/store/useSyncStore'
 import type { IEmployee, IPayrollEntry, ITransaction } from '@/types/finance'
 import type { ITask } from '@/types/planner'
 import type { ILotteryTicket } from '@/types/lottery'
+import type { IBudget } from '@/types/budget'
+import type { IRecurringItem } from '@/types/recurring'
 
-export type SyncEntityKind = 'transaction' | 'employee' | 'payrollEntry' | 'task' | 'lotteryTicket'
+export type SyncEntityKind =
+  | 'transaction'
+  | 'employee'
+  | 'payrollEntry'
+  | 'task'
+  | 'lotteryTicket'
+  | 'budget'
+  | 'recurring'
 export type SyncActionKind = 'upsert' | 'delete'
 
 interface ITransactionUpsertOperation {
@@ -87,6 +100,32 @@ interface ILotteryTicketDeleteOperation {
   id: string
 }
 
+interface IBudgetUpsertOperation {
+  kind: 'budget'
+  action: 'upsert'
+  id: string
+  payload: IBudget
+}
+
+interface IBudgetDeleteOperation {
+  kind: 'budget'
+  action: 'delete'
+  id: string
+}
+
+interface IRecurringUpsertOperation {
+  kind: 'recurring'
+  action: 'upsert'
+  id: string
+  payload: IRecurringItem
+}
+
+interface IRecurringDeleteOperation {
+  kind: 'recurring'
+  action: 'delete'
+  id: string
+}
+
 export type ISyncOperation =
   | ITransactionUpsertOperation
   | ITransactionDeleteOperation
@@ -98,6 +137,10 @@ export type ISyncOperation =
   | ITaskDeleteOperation
   | ILotteryTicketUpsertOperation
   | ILotteryTicketDeleteOperation
+  | IBudgetUpsertOperation
+  | IBudgetDeleteOperation
+  | IRecurringUpsertOperation
+  | IRecurringDeleteOperation
 
 // ดีเลย์ retry แบบ exponential backoff: 2s, 4s, 8s, ... สูงสุด 30s
 const INITIAL_RETRY_DELAY_MS = 2000
@@ -162,6 +205,20 @@ async function processSyncOperation(userId: string, operation: ISyncOperation): 
         await pushLotteryTicket(userId, operation.payload)
       } else {
         await deleteLotteryTicket(operation.id)
+      }
+      return
+    case 'budget':
+      if (operation.action === 'upsert') {
+        await pushBudget(userId, operation.payload)
+      } else {
+        await deleteBudget(operation.id)
+      }
+      return
+    case 'recurring':
+      if (operation.action === 'upsert') {
+        await pushRecurringItem(userId, operation.payload)
+      } else {
+        await deleteRecurringItem(operation.id)
       }
       return
   }

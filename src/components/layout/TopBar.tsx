@@ -9,6 +9,7 @@ import { ThemePanel } from '@/components/layout/ThemePanel'
 import { SideNav } from '@/components/layout/SideNav'
 import { UserMenu } from '@/features/auth/ui/UserMenu'
 import { SyncIndicator } from '@/features/sync/ui/SyncIndicator'
+import { HeaderStatus } from '@/components/layout/HeaderStatus'
 
 export function TopBar() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
@@ -36,7 +37,7 @@ export function TopBar() {
         </SheetContent>
       </Sheet>
 
-      <div className="flex-1" />
+      <HeaderStatus />
 
       <SyncIndicator />
       <ThemeToggle />

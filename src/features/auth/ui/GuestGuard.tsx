@@ -15,7 +15,7 @@ export function GuestGuard({ children }: IGuestGuard) {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.replace('/')
+      router.replace('/transactions')
     }
   }, [status, router])
 

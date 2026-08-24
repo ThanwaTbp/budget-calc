@@ -487,3 +487,169 @@ HERO เต็มความกว้าง — การ์ดตรวจเ�
 
 ## ข้อห้าม (เหมือนทั้งแอป)
 ห้าม hardcode สี hex/rgb · ห้าม inline style · ตัวเลขทุกที่ใส่ `tabular` · เงินใช้ `formatCurrency`
+
+---
+
+# ฟีเจอร์สภาพอากาศ (Weather) — เพิ่มใน v8
+
+## แหล่งข้อมูล: Open-Meteo (ฟรี ไม่ต้องใช้ API key) — ตรวจสอบใช้งานได้จริงแล้ว
+- ค้นหาเมือง: `https://geocoding-api.open-meteo.com/v1/search?name={q}&count=8&language=th`
+  → `results: [{ id, name, admin1, country, latitude, longitude }]`
+- พยากรณ์: `https://api.open-meteo.com/v1/forecast`
+  พารามิเตอร์ที่ใช้: `latitude`, `longitude`, `timezone=Asia/Bangkok`, `forecast_days=16`
+  `current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m`
+  `daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum`
+  `hourly=temperature_2m,weather_code,precipitation_probability`
+
+เรียกผ่าน **Route Handler ฝั่งเซิร์ฟเวอร์** เหมือนฟีเจอร์ตรวจหวย (cache ได้ + ไม่ต้องพึ่ง CORS)
+- `GET /api/weather/forecast?lat=&lon=` — cache สั้น (~15 นาที) เพราะอากาศเปลี่ยนบ่อย
+- `GET /api/weather/search?q=` — cache ยาวได้ (~1 วัน) เพราะพิกัดเมืองไม่เปลี่ยน
+- validate `lat` (-90..90) และ `lon` (-180..180) เป็นตัวเลขก่อนยิงออกเสมอ กันพาธแปลกปลอม
+- error → `{ message: '<ข้อความไทย>' }` **ห้ามหลุดข้อความอังกฤษถึงผู้ใช้**
+
+## แปลง WMO weather code เป็นภาษาไทย (ห้ามเดาเอง ใช้ตารางนี้)
+| code | ความหมาย |
+|---|---|
+| 0 | ท้องฟ้าแจ่มใส |
+| 1 | มีเมฆบางส่วน |
+| 2 | มีเมฆเป็นส่วนมาก |
+| 3 | มีเมฆมาก |
+| 45, 48 | หมอก |
+| 51, 53, 55 | ฝนละออง |
+| 56, 57 | ฝนละอองเยือกแข็ง |
+| 61, 63, 65 | ฝนตก |
+| 66, 67 | ฝนเยือกแข็ง |
+| 71, 73, 75 | หิมะตก |
+| 77 | เม็ดหิมะ |
+| 80, 81, 82 | ฝนซู่ |
+| 85, 86 | หิมะซู่ |
+| 95 | พายุฝนฟ้าคะนอง |
+| 96, 99 | พายุฝนฟ้าคะนองมีลูกเห็บ |
+
+ไอคอน lucide ที่ใช้คู่กัน: แจ่มใส `Sun` · เมฆบางส่วน `CloudSun` · เมฆมาก `Cloud` · หมอก `CloudFog` · ฝนละออง `CloudDrizzle` · ฝน/ฝนซู่ `CloudRain` · หิมะ `Snowflake` · พายุฝนฟ้าคะนอง `CloudLightning`
+
+## Data model (`src/types/weather.ts`)
+```ts
+export interface IWeatherLocation {
+  id: number
+  name: string
+  admin1: string
+  country: string
+  latitude: number
+  longitude: number
+}
+
+export interface IDailyWeather {
+  date: string                    // 'yyyy-MM-dd'
+  weatherCode: number
+  temperatureMax: number
+  temperatureMin: number
+  precipitationProbability: number
+  precipitationSum: number
+}
+
+export interface IHourlyWeather {
+  time: string                    // ISO
+  temperature: number
+  weatherCode: number
+  precipitationProbability: number
+}
+
+export interface ICurrentWeather {
+  temperature: number
+  apparentTemperature: number
+  humidity: number
+  precipitation: number
+  weatherCode: number
+  windSpeed: number
+}
+
+export interface IWeatherForecast {
+  current: ICurrentWeather
+  daily: IDailyWeather[]
+  hourly: IHourlyWeather[]
+}
+```
+
+## เกณฑ์เตือนสภาพอากาศ (ใช้ร่วมกันทั้งหน้าสภาพอากาศและหน้าวางแผนงาน)
+| ระดับ | เงื่อนไข | สี |
+|---|---|---|
+| `severe` | code 95/96/99 (พายุฝนฟ้าคะนอง) หรือโอกาสฝน ≥ 80% | `text-expense` |
+| `caution` | โอกาสฝน ≥ 60% หรือ code 61-67, 80-82 | `text-warning` |
+| `normal` | นอกเหนือจากนั้น | `text-muted-foreground` |
+
+## เชื่อมกับหน้าวางแผนงาน
+งานที่มีวันที่อยู่ในช่วงพยากรณ์ (16 วันข้างหน้า) ต้องแสดงสภาพอากาศของวันนั้นให้เห็น
+- หัววันในมุมมองรายวัน/รายเดือน → ไอคอน + อุณหภูมิสูง-ต่ำ + โอกาสฝน
+- ระดับ `severe`/`caution` ต้องเห็นชัดว่าเป็นคำเตือน
+- **วันที่อยู่นอกช่วงพยากรณ์ต้องไม่แสดงอะไรเลย** ห้ามเดา
+
+---
+
+# ชุดฟีเจอร์ v9 — งบประมาณ / รายการประจำ / ราคาตลาด / ส่งออกข้อมูล
+
+## 1. งบประมาณรายเดือน (Budget) — `/budget`
+ตั้งวงเงินต่อหมวดรายจ่าย ใช้ซ้ำทุกเดือน (ไม่ผูกกับเดือนใดเดือนหนึ่ง)
+
+```ts
+// src/types/budget.ts
+export interface IBudget {
+  id: string
+  categoryId: string      // หมวดรายจ่ายจาก DEFAULT_CATEGORIES (type === 'expense')
+  amount: number          // วงเงินต่อเดือน
+  createdAt: string
+}
+```
+**เกณฑ์สถานะ** (ใช้ร่วมกันทุกที่): ใช้ไป < 80% → `safe` (`text-income`) · 80–100% → `warning` (`text-warning`) · > 100% → `over` (`text-expense`)
+
+store `useBudgetStore` — persist key `budget-calc:budgets` · `userScopedStorage` · sync kind `'budget'`
+`onUpsert(categoryId, amount)` — หนึ่งหมวดมีได้แค่หนึ่งวงเงิน ตั้งซ้ำให้ทับของเดิม · `onDelete(id)` · `onReset` · `onReplaceAll`
+
+## 2. รายการประจำ (Recurring) — `/recurring`
+บิลที่เกิดซ้ำทุกเดือนวันเดิม เช่น ค่าเช่า เงินเดือน ค่าเน็ต
+
+```ts
+// src/types/recurring.ts
+export interface IRecurringItem {
+  id: string
+  type: TransactionType        // 'income' | 'expense'
+  amount: number
+  categoryId: string
+  note: string
+  dayOfMonth: number           // 1–31
+  isActive: boolean
+  lastPostedYearMonth: string  // 'yyyy-MM' ที่ลงรายการไปแล้วล่าสุด ('' = ยังไม่เคยลง)
+  createdAt: string
+}
+```
+**กติกาลงรายการอัตโนมัติ (ต้องถูก 100%)**
+- ลงได้เมื่อ `isActive === true` **และ** วันนี้ (วันที่ท้องถิ่น) `>= dayOfMonth` ของเดือนปัจจุบัน **และ** `lastPostedYearMonth !== เดือนปัจจุบัน`
+- เดือนที่ไม่มีวันนั้น (เช่นตั้งวันที่ 31 แต่เดือน ก.พ.) → ใช้ **วันสุดท้ายของเดือนนั้นแทน**
+- ลงแล้วต้องอัปเดต `lastPostedYearMonth` ทันที **ห้ามลงซ้ำในเดือนเดียวกันเด็ดขาด**
+- รายการที่สร้างเป็น `ITransaction` ปกติ (`source: 'manual'`) แก้/ลบเองได้ตามปกติ
+
+store `useRecurringStore` — persist key `budget-calc:recurring` · `userScopedStorage` · sync kind `'recurring'`
+
+## 3. ราคาตลาด (Market) — `/market`
+API ที่ตรวจสอบแล้วว่าใช้งานได้จริง (ไม่ต้องใช้ key):
+| ข้อมูล | endpoint | หมายเหตุ |
+|---|---|---|
+| ทองคำไทย | `https://api.chnwt.dev/thai-gold-api/latest` | `response.price.gold` (รูปพรรณ) และ `.gold_bar` (ทองแท่ง) แต่ละอันมี `buy`/`sell` เป็น **string มีคอมมา** ต้องแปลงเป็นตัวเลขเอง |
+| น้ำมัน | `https://api.chnwt.dev/thai-oil-api/latest` | `response.stations.{ptt,bcp,shell,caltex,irpc,pt,susco,pure,susco_dealers}` แต่ละปั๊มมีชนิดน้ำมันเป็น object `{ name, price }` — **ปั๊มบางเจ้าไม่มีน้ำมันบางชนิด ต้องกัน undefined** |
+| อัตราแลกเปลี่ยน | `https://api.frankfurter.app/latest?from=THB` | ข้อมูล ECB **ไม่อัปเดตวันหยุด** ต้องแสดงวันที่ของข้อมูลให้ผู้ใช้เห็นเสมอ |
+
+เรียกผ่าน Route Handler ฝั่งเซิร์ฟเวอร์ (`/api/market/gold`, `/api/market/oil`, `/api/market/currency`) cache ~30 นาที · error เป็นข้อความไทย
+**แปลงค่าเงิน**: ใช้ `https://api.frankfurter.app/latest?from={FROM}&to={TO}` — validate รหัสสกุลเงินเป็น A-Z 3 ตัวก่อนยิงเสมอ
+
+## 4. ส่งออกข้อมูล (Export) — `/export`
+ส่งออกเป็น **CSV ที่เปิดใน Excel ภาษาไทยไม่เพี้ยน** — ต้องใส่ **UTF-8 BOM (`﻿`) นำหน้าไฟล์เสมอ** ไม่งั้น Excel อ่านภาษาไทยเป็นตัวยึกยือ
+- เลือกชุดข้อมูล: รายรับ-รายจ่าย · พนักงาน · รอบจ่ายค่าจ้าง · งานในปฏิทิน · เลขหวยที่บันทึก
+- เลือกช่วงเวลา (สำหรับชุดที่มีวันที่)
+- escape ค่าที่มี `,` `"` หรือขึ้นบรรทัดใหม่ ตามมาตรฐาน CSV (ครอบด้วย `"` และแทน `"` ด้วย `""`)
+- ดาวน์โหลดฝั่ง client ด้วย `Blob` + `URL.createObjectURL` **ห้ามเพิ่ม dependency**
+
+## Appwrite collections ที่เพิ่ม
+| collection | attributes |
+|---|---|
+| `bc_budgets` | `categoryId` string(64) req · `amount` double req · `createdAtIso` string(32) req |
+| `bc_recurring` | `type` string(16) req · `amount` double req · `categoryId` string(64) req · `note` string(256) · `dayOfMonth` double req · `isActive` string(8) req (เก็บเป็น `'true'`/`'false'` เพราะ schema helper รองรับแค่ string/float) · `lastPostedYearMonth` string(7) · `createdAtIso` string(32) req |

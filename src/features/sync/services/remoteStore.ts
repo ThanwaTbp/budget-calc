@@ -6,6 +6,9 @@ import { APPWRITE_COLLECTIONS, APPWRITE_DATABASE_ID } from '@/constants/appwrite
 import type { IEmployee, IPayItem, IPayrollEntry, ITransaction, PayItemKind } from '@/types/finance'
 import type { ITask, TaskStatus } from '@/types/planner'
 import type { ILotteryTicket } from '@/types/lottery'
+import type { IBudget } from '@/types/budget'
+import type { IRecurringItem } from '@/types/recurring'
+import type { TransactionType } from '@/types/finance'
 
 export interface IRemoteSnapshot {
   transactions: ITransaction[]
@@ -13,6 +16,8 @@ export interface IRemoteSnapshot {
   entries: IPayrollEntry[]
   tasks: ITask[]
   lotteryTickets: ILotteryTicket[]
+  budgets: IBudget[]
+  recurringItems: IRecurringItem[]
 }
 
 const appwriteDatabases = new Databases(appwriteClient)
@@ -61,6 +66,24 @@ interface ITaskDocument extends Models.Document {
 interface ILotteryTicketDocument extends Models.Document {
   number: string
   note: string
+  createdAtIso: string
+}
+
+interface IBudgetDocument extends Models.Document {
+  categoryId: string
+  amount: number
+  createdAtIso: string
+}
+
+interface IRecurringDocument extends Models.Document {
+  type: string
+  amount: number
+  categoryId: string
+  note: string
+  dayOfMonth: number
+  // schema helper รองรับแค่ string/float เท่านั้น จึงเก็บ boolean เป็น 'true'/'false' แทน
+  isActive: string
+  lastPostedYearMonth: string
   createdAtIso: string
 }
 
@@ -206,6 +229,61 @@ function mapLotteryTicketEntityToDocumentData(
   }
 }
 
+function mapBudgetDocumentToEntity(document: IBudgetDocument): IBudget {
+  return {
+    id: document.$id,
+    categoryId: document.categoryId,
+    amount: document.amount,
+    createdAt: document.createdAtIso,
+  }
+}
+
+function mapBudgetEntityToDocumentData(budget: IBudget): Omit<IBudgetDocument, keyof Models.Document> {
+  return {
+    categoryId: budget.categoryId,
+    amount: budget.amount,
+    createdAtIso: budget.createdAt,
+  }
+}
+
+function toTransactionType(type: string): TransactionType {
+  return type === 'income' ? 'income' : 'expense'
+}
+
+// กันวันที่เพี้ยนจากข้อมูลเก่า/แก้มือ ปัดเข้าช่วง 1–31 เสมอ
+function clampDayOfMonth(dayOfMonth: number): number {
+  if (!Number.isFinite(dayOfMonth)) return 1
+  return Math.min(31, Math.max(1, Math.round(dayOfMonth)))
+}
+
+function mapRecurringDocumentToEntity(document: IRecurringDocument): IRecurringItem {
+  return {
+    id: document.$id,
+    type: toTransactionType(document.type),
+    amount: document.amount,
+    categoryId: document.categoryId,
+    note: document.note ?? '',
+    dayOfMonth: clampDayOfMonth(Number(document.dayOfMonth)),
+    // ห้ามใช้ Boolean(value) เพราะ Boolean('false') เป็น true ต้องเทียบ string ตรงๆ เท่านั้น
+    isActive: document.isActive === 'true',
+    lastPostedYearMonth: document.lastPostedYearMonth ?? '',
+    createdAt: document.createdAtIso,
+  }
+}
+
+function mapRecurringEntityToDocumentData(item: IRecurringItem): Omit<IRecurringDocument, keyof Models.Document> {
+  return {
+    type: item.type,
+    amount: item.amount,
+    categoryId: item.categoryId,
+    note: item.note,
+    dayOfMonth: item.dayOfMonth,
+    isActive: item.isActive ? 'true' : 'false',
+    lastPostedYearMonth: item.lastPostedYearMonth,
+    createdAtIso: item.createdAt,
+  }
+}
+
 // วนดึงเอกสารทั้งหมดของ collection ด้วย cursor pagination จนครบ (listDocuments คืนแค่ 25 แถวแรกถ้าไม่ระบุ limit)
 async function fetchAllDocuments<Document extends Models.Document>(collectionId: string): Promise<Document[]> {
   const documents: Document[] = []
@@ -244,14 +322,23 @@ export async function pullSnapshot(userId: string): Promise<IRemoteSnapshot> {
     throw new Error('ต้องระบุผู้ใช้ก่อนดึงข้อมูล')
   }
 
-  const [transactionDocuments, employeeDocuments, payrollEntryDocuments, taskDocuments, lotteryTicketDocuments] =
-    await Promise.all([
-      fetchAllDocuments<ITransactionDocument>(APPWRITE_COLLECTIONS.transactions),
-      fetchAllDocuments<IEmployeeDocument>(APPWRITE_COLLECTIONS.employees),
-      fetchAllDocuments<IPayrollEntryDocument>(APPWRITE_COLLECTIONS.payrollEntries),
-      fetchAllDocuments<ITaskDocument>(APPWRITE_COLLECTIONS.tasks),
-      fetchAllDocuments<ILotteryTicketDocument>(APPWRITE_COLLECTIONS.lotteryTickets),
-    ])
+  const [
+    transactionDocuments,
+    employeeDocuments,
+    payrollEntryDocuments,
+    taskDocuments,
+    lotteryTicketDocuments,
+    budgetDocuments,
+    recurringDocuments,
+  ] = await Promise.all([
+    fetchAllDocuments<ITransactionDocument>(APPWRITE_COLLECTIONS.transactions),
+    fetchAllDocuments<IEmployeeDocument>(APPWRITE_COLLECTIONS.employees),
+    fetchAllDocuments<IPayrollEntryDocument>(APPWRITE_COLLECTIONS.payrollEntries),
+    fetchAllDocuments<ITaskDocument>(APPWRITE_COLLECTIONS.tasks),
+    fetchAllDocuments<ILotteryTicketDocument>(APPWRITE_COLLECTIONS.lotteryTickets),
+    fetchAllDocuments<IBudgetDocument>(APPWRITE_COLLECTIONS.budgets),
+    fetchAllDocuments<IRecurringDocument>(APPWRITE_COLLECTIONS.recurring),
+  ])
 
   return {
     transactions: transactionDocuments.map(mapTransactionDocumentToEntity),
@@ -259,6 +346,8 @@ export async function pullSnapshot(userId: string): Promise<IRemoteSnapshot> {
     entries: payrollEntryDocuments.map(mapPayrollEntryDocumentToEntity),
     tasks: taskDocuments.map(mapTaskDocumentToEntity),
     lotteryTickets: lotteryTicketDocuments.map(mapLotteryTicketDocumentToEntity),
+    budgets: budgetDocuments.map(mapBudgetDocumentToEntity),
+    recurringItems: recurringDocuments.map(mapRecurringDocumentToEntity),
   }
 }
 
@@ -352,6 +441,42 @@ export async function deleteLotteryTicket(id: string): Promise<void> {
   })
 }
 
+export async function pushBudget(userId: string, budget: IBudget): Promise<void> {
+  await appwriteDatabases.upsertDocument<IBudgetDocument>({
+    databaseId: APPWRITE_DATABASE_ID,
+    collectionId: APPWRITE_COLLECTIONS.budgets,
+    documentId: budget.id,
+    data: mapBudgetEntityToDocumentData(budget),
+    permissions: buildOwnerPermissions(userId),
+  })
+}
+
+export async function deleteBudget(id: string): Promise<void> {
+  await appwriteDatabases.deleteDocument({
+    databaseId: APPWRITE_DATABASE_ID,
+    collectionId: APPWRITE_COLLECTIONS.budgets,
+    documentId: id,
+  })
+}
+
+export async function pushRecurringItem(userId: string, item: IRecurringItem): Promise<void> {
+  await appwriteDatabases.upsertDocument<IRecurringDocument>({
+    databaseId: APPWRITE_DATABASE_ID,
+    collectionId: APPWRITE_COLLECTIONS.recurring,
+    documentId: item.id,
+    data: mapRecurringEntityToDocumentData(item),
+    permissions: buildOwnerPermissions(userId),
+  })
+}
+
+export async function deleteRecurringItem(id: string): Promise<void> {
+  await appwriteDatabases.deleteDocument({
+    databaseId: APPWRITE_DATABASE_ID,
+    collectionId: APPWRITE_COLLECTIONS.recurring,
+    documentId: id,
+  })
+}
+
 // อัปโหลด snapshot ทั้งก้อนขึ้น Appwrite ใช้ตอนย้ายข้อมูลครั้งแรก (ทยอยทีละชุดกันโดน rate limit)
 export async function pushSnapshot(userId: string, snapshot: IRemoteSnapshot): Promise<void> {
   await pushInBatches(snapshot.transactions, (transaction) => pushTransaction(userId, transaction))
@@ -359,6 +484,8 @@ export async function pushSnapshot(userId: string, snapshot: IRemoteSnapshot): P
   await pushInBatches(snapshot.entries, (entry) => pushPayrollEntry(userId, entry))
   await pushInBatches(snapshot.tasks, (task) => pushTask(userId, task))
   await pushInBatches(snapshot.lotteryTickets, (ticket) => pushLotteryTicket(userId, ticket))
+  await pushInBatches(snapshot.budgets, (budget) => pushBudget(userId, budget))
+  await pushInBatches(snapshot.recurringItems, (item) => pushRecurringItem(userId, item))
 }
 
 export function isRemoteReady(): boolean {

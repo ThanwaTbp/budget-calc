@@ -16,6 +16,8 @@ export const APPWRITE_COLLECTIONS = {
   payrollEntries: 'payrollEntries',
   tasks: 'bc_tasks',
   lotteryTickets: 'bc_lottery_tickets',
+  budgets: 'bc_budgets',
+  recurring: 'bc_recurring',
 } as const
 
 export type AppwriteCollectionKey = keyof typeof APPWRITE_COLLECTIONS
@@ -111,6 +113,31 @@ export const APPWRITE_SCHEMA: IAppwriteCollectionSchema[] = [
       { key: 'number', type: 'string', required: true, size: 6 },
       { key: 'note', type: 'string', required: false, size: 160 },
       { key: 'createdAtIso', type: 'string', required: true, size: 32 },
+    ],
+    indexes: [],
+  },
+  {
+    collectionId: APPWRITE_COLLECTIONS.budgets,
+    name: 'Budgets',
+    attributes: [
+      { key: 'categoryId', type: 'string', size: 64, required: true },
+      { key: 'amount', type: 'float', required: true },
+      { key: 'createdAtIso', type: 'string', size: 32, required: true },
+    ],
+    indexes: [],
+  },
+  {
+    collectionId: APPWRITE_COLLECTIONS.recurring,
+    name: 'Recurring Items',
+    attributes: [
+      { key: 'type', type: 'string', size: 16, required: true },
+      { key: 'amount', type: 'float', required: true },
+      { key: 'categoryId', type: 'string', size: 64, required: true },
+      { key: 'note', type: 'string', size: 256, required: false },
+      { key: 'dayOfMonth', type: 'float', required: true },
+      { key: 'isActive', type: 'string', size: 8, required: true },
+      { key: 'lastPostedYearMonth', type: 'string', size: 7, required: false },
+      { key: 'createdAtIso', type: 'string', size: 32, required: true },
     ],
     indexes: [],
   },

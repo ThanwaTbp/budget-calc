@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { CalendarPlus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -14,6 +15,7 @@ import { PlannerCalendar } from '@/features/planner/ui/PlannerCalendar'
 import { PlannerSummaryBar } from '@/features/planner/ui/PlannerSummaryBar'
 import { PlannerViewToggle } from '@/features/planner/ui/PlannerViewToggle'
 import { TaskDialog } from '@/features/planner/ui/TaskDialog'
+import { useTaskWeather } from '@/features/weather/hooks/useTaskWeather'
 import type { ITask } from '@/types/planner'
 
 const monthLabelFormatter = new Intl.DateTimeFormat('th-TH', { month: 'long', year: 'numeric' })
@@ -37,6 +39,9 @@ export function PlannerPage() {
     selectedDayCounts,
     hasAnyTask,
   } = usePlannerBoard()
+
+  // เรียก useTaskWeather() ครั้งเดียวที่นี่แล้วส่ง getWeatherForDate ลงไปทาง props ห้ามเรียกซ้ำในลูก (จะยิง API ซ้ำ)
+  const { getWeatherForDate, locationName, hasForecast } = useTaskWeather()
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<ITask | null>(null)
@@ -75,6 +80,15 @@ export function PlannerPage() {
         </Button>
       </PageHeader>
 
+      {hasForecast && (
+        <p className="text-sm text-muted-foreground">
+          สภาพอากาศ: {locationName} ·{' '}
+          <Link href="/weather" className="underline hover:text-foreground">
+            เปลี่ยนสถานที่
+          </Link>
+        </p>
+      )}
+
       <PlannerSummaryBar monthSummary={monthSummary} monthLabel={monthLabelFormatter.format(visibleMonth)} />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
@@ -101,6 +115,7 @@ export function PlannerPage() {
                 onStatusFilterChange={onStatusFilterChange}
                 onCreateTask={onCreateTask}
                 onEditTask={onEditTask}
+                weather={getWeatherForDate(selectedDate)}
               />
             ) : (
               <MonthTaskList
@@ -112,6 +127,7 @@ export function PlannerPage() {
                 onSelectDate={onSelectDate}
                 onCreateTask={onCreateTask}
                 onEditTask={onEditTask}
+                getWeatherForDate={getWeatherForDate}
               />
             )}
           </div>

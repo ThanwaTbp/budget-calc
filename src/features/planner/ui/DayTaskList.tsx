@@ -5,9 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EmptyState } from '@/components/common/EmptyState'
 import { parseLocalDateString } from '@/features/planner/hooks/usePlannerBoard'
+import { DayWeatherBadge } from '@/features/planner/ui/DayWeatherBadge'
 import { TaskListItem } from '@/features/planner/ui/TaskListItem'
 import type { PlannerStatusFilter } from '@/features/planner/type'
+import type { ITaskWeather } from '@/features/weather/hooks/useTaskWeather'
 import type { ITask } from '@/types/planner'
+import { cn } from '@/lib/utils'
 
 interface IDayTaskCounts {
   all: number
@@ -23,6 +26,25 @@ interface IDayTaskList {
   onStatusFilterChange: (filter: PlannerStatusFilter) => void
   onCreateTask: () => void
   onEditTask: (task: ITask) => void
+  weather: ITaskWeather | null
+}
+
+// ข้อความเตือนใต้หัววัน — ให้เป็นประโยชน์จริง (แนะนำสิ่งที่ควรทำ) ไม่ใช่แค่พูดตัวเลขซ้ำจาก badge
+// คืน null เมื่อไม่มีพยากรณ์ หรือระดับเตือนเป็น 'normal' (ไม่ต้องกวนใจผู้ใช้)
+export function getWeatherAdviceMessage(weather: ITaskWeather | null): string | null {
+  if (!weather) return null
+
+  const precipitationPercent = Math.round(weather.precipitationProbability)
+
+  if (weather.alertLevel === 'severe') {
+    return `วันนี้มี${weather.description} โอกาสฝน ${precipitationPercent}% — เผื่อเวลาเดินทางหรือเลื่อนงานกลางแจ้ง`
+  }
+
+  if (weather.alertLevel === 'caution') {
+    return `วันนี้มีโอกาสฝน ${precipitationPercent}% — เตรียมร่มไว้ด้วย`
+  }
+
+  return null
 }
 
 const dayTitleFormatter = new Intl.DateTimeFormat('th-TH', {
@@ -51,6 +73,7 @@ export function DayTaskList({
   onStatusFilterChange,
   onCreateTask,
   onEditTask,
+  weather,
 }: IDayTaskList) {
   const dayTitle = dayTitleFormatter.format(parseLocalDateString(selectedDate))
 
@@ -58,13 +81,31 @@ export function DayTaskList({
   const firstUntimedIndex = tasks.findIndex((task) => task.startTime === '')
   const dividerIndex = firstUntimedIndex > 0 ? firstUntimedIndex : -1
 
+  // แถบเตือนสภาพอากาศ แสดงเฉพาะระดับ severe/caution และเฉพาะวันที่มีงานอยู่จริง (ไม่กวนใจวันว่าง)
+  const weatherAdviceMessage = counts.all > 0 ? getWeatherAdviceMessage(weather) : null
+
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold tracking-tight">{dayTitle}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-semibold tracking-tight">{dayTitle}</h2>
+            <DayWeatherBadge weather={weather} variant="detailed" />
+          </div>
           <span className="text-sm text-muted-foreground">{counts.all} งาน</span>
         </div>
+
+        {weatherAdviceMessage && weather && (
+          <p
+            className={cn(
+              'rounded-lg border px-3 py-2 text-sm',
+              weather.alertLevel === 'severe' && 'border-expense/40 bg-expense-muted text-expense',
+              weather.alertLevel === 'caution' && 'border-warning/40 bg-warning-muted text-warning',
+            )}
+          >
+            {weatherAdviceMessage}
+          </p>
+        )}
 
         <Tabs value={statusFilter} onValueChange={(value) => onStatusFilterChange(value as PlannerStatusFilter)}>
           <TabsList>
