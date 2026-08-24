@@ -12,5 +12,4 @@ export const appwriteClient = new Client().setEndpoint(endpoint).setProject(proj
 
 export const appwriteAccount = new Account(appwriteClient)
 
-export const APPWRITE_ENDPOINT = endpoint
 export const APPWRITE_PROJECT_ID = projectId

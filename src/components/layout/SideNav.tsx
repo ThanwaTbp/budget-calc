@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NAV_ITEMS } from '@/constants/navigation'
+import { useMenuSettingsStore } from '@/features/settings/store/useMenuSettingsStore'
 
 interface ISideNav {
   onNavigate?: () => void
@@ -12,6 +13,10 @@ interface ISideNav {
 
 export function SideNav({ onNavigate }: ISideNav) {
   const pathname = usePathname()
+  const hiddenMenuHrefs = useMenuSettingsStore((state) => state.hiddenMenuHrefs)
+
+  // เมนูที่ผู้ใช้เลือกซ่อนในหน้าตั้งค่า ยังเข้าถึงได้ทาง URL ตรง แค่ไม่แสดงในแถบเมนู
+  const visibleNavItems = NAV_ITEMS.filter((navItem) => !hiddenMenuHrefs.includes(navItem.href))
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -23,7 +28,7 @@ export function SideNav({ onNavigate }: ISideNav) {
       </div>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3">
-        {NAV_ITEMS.map((navItem) => {
+        {visibleNavItems.map((navItem) => {
           const isActive = pathname === navItem.href
 
           return (
@@ -45,9 +50,6 @@ export function SideNav({ onNavigate }: ISideNav) {
         })}
       </nav>
 
-      <div className="shrink-0 border-t border-border px-4 py-3 text-xs text-muted-foreground">
-        ข้อมูลถูกเก็บไว้ในเบราว์เซอร์นี้เท่านั้น
-      </div>
     </div>
   )
 }

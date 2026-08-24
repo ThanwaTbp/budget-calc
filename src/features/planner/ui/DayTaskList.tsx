@@ -4,12 +4,12 @@ import { CalendarPlus, Plus, SearchX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EmptyState } from '@/components/common/EmptyState'
-import { parseLocalDateString } from '@/features/planner/hooks/usePlannerBoard'
 import { DayWeatherBadge } from '@/features/planner/ui/DayWeatherBadge'
 import { TaskListItem } from '@/features/planner/ui/TaskListItem'
 import type { PlannerStatusFilter } from '@/features/planner/type'
 import type { ITaskWeather } from '@/features/weather/hooks/useTaskWeather'
 import type { ITask } from '@/types/planner'
+import { fromLocalDateString } from '@/utils/date'
 import { cn } from '@/lib/utils'
 
 interface IDayTaskCounts {
@@ -75,7 +75,7 @@ export function DayTaskList({
   onEditTask,
   weather,
 }: IDayTaskList) {
-  const dayTitle = dayTitleFormatter.format(parseLocalDateString(selectedDate))
+  const dayTitle = dayTitleFormatter.format(fromLocalDateString(selectedDate))
 
   // งานที่ระบุเวลาเรียงมาก่อนแล้ว (จาก sortDayTasks) หาตำแหน่งงานไม่ระบุเวลาตัวแรกเพื่อคั่นเส้นแบ่ง
   const firstUntimedIndex = tasks.findIndex((task) => task.startTime === '')

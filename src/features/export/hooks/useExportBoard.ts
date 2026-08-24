@@ -16,14 +16,7 @@ import {
   buildTransactionRows,
 } from '@/features/export/utils/exportBuilders'
 import type { IExportDataset } from '@/features/export/type'
-
-// แปลง Date เป็น 'yyyy-MM-dd' ตามเวลาท้องถิ่น — ห้ามใช้ toISOString() เพราะจะตีความเป็น UTC แล้ววันเพี้ยน
-function toIsoDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+import { toLocalDateString } from '@/utils/date'
 
 export function useExportBoard() {
   const transactions = useTransactionStore((state) => state.transactions)
@@ -38,14 +31,14 @@ export function useExportBoard() {
 
   const onSelectThisMonth = () => {
     const today = new Date()
-    setFromDate(toIsoDate(new Date(today.getFullYear(), today.getMonth(), 1)))
-    setToDate(toIsoDate(today))
+    setFromDate(toLocalDateString(new Date(today.getFullYear(), today.getMonth(), 1)))
+    setToDate(toLocalDateString(today))
   }
 
   const onSelectThisYear = () => {
     const today = new Date()
-    setFromDate(toIsoDate(new Date(today.getFullYear(), 0, 1)))
-    setToDate(toIsoDate(today))
+    setFromDate(toLocalDateString(new Date(today.getFullYear(), 0, 1)))
+    setToDate(toLocalDateString(today))
   }
 
   const onSelectAllTime = () => {
@@ -106,7 +99,7 @@ export function useExportBoard() {
 
   const onDownload = (dataset: IExportDataset) => {
     const csvContent = buildCsvContent(dataset.table.headers, dataset.table.rows)
-    const fileName = `budget-calc-${dataset.fileSlug}-${toIsoDate(new Date())}.csv`
+    const fileName = `budget-calc-${dataset.fileSlug}-${toLocalDateString(new Date())}.csv`
     downloadCsv(fileName, csvContent)
     toast.success(`ดาวน์โหลด ${fileName} แล้ว`)
   }

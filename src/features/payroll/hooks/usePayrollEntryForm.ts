@@ -6,6 +6,7 @@ import { useFieldArray, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { usePayrollStore } from '@/features/payroll/store/usePayrollStore'
 import type { IPayrollEntry } from '@/types/finance'
+import { getTodayDateString } from '@/utils/date'
 
 const payItemFormSchema = z.object({
   label: z.string().min(1, 'กรุณากรอกชื่อรายการ'),
@@ -24,22 +25,13 @@ const payrollEntryFormSchema = z.object({
 export type IPayrollEntryFormInput = z.input<typeof payrollEntryFormSchema>
 export type IPayrollEntryFormValues = z.output<typeof payrollEntryFormSchema>
 
-// คืนวันที่ปัจจุบันตามเวลาท้องถิ่นในรูปแบบ yyyy-MM-dd ห้ามใช้ toISOString() เพราะคืนค่าตามโซน UTC
-// ทำให้วันที่เพี้ยนย้อนหลัง 1 วันในช่วงหลัง 17:00 น. ตามเวลาไทย (UTC+7)
-function getLocalDateString(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 // ค่าเริ่มต้นตอนเปิดฟอร์มใหม่: บรรทัดว่าง 1 รายการชนิดจ่ายเพิ่ม วันที่เป็นวันนี้
 // amount เป็นค่าว่างแทน 0 เพื่อไม่ให้ผู้ใช้ต้องลบเลข 0 ทิ้งก่อนพิมพ์ทุกครั้ง
 // defaultEmployeeId เป็นค่าว่างได้ (เช่น เปิดจากปุ่ม 'เพิ่มรอบจ่าย' ที่หัวหน้า) บังคับให้ผู้ใช้เลือกเองในฟอร์ม
 function createEmptyFormValues(defaultEmployeeId: string): IPayrollEntryFormInput {
   return {
     employeeId: defaultEmployeeId,
-    date: getLocalDateString(new Date()),
+    date: getTodayDateString(),
     note: '',
     items: [{ label: '', amount: '', kind: 'earning' }],
   }

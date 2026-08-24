@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { fromLocalDateString, toLocalDateString } from '@/utils/date'
 
 interface IDatePicker {
   value: string
@@ -17,20 +18,12 @@ interface IDatePicker {
   disabled?: boolean
 }
 
-// แปลง 'yyyy-MM-dd' เป็น Date ตามเวลาท้องถิ่น — new Date(string) จะตีความเป็น UTC ทำให้วันเพี้ยน
+// แปลง 'yyyy-MM-dd' เป็น Date ตามเวลาท้องถิ่น — คืน undefined เมื่อค่าว่างหรือรูปแบบไม่ถูกต้อง
 function toLocalDate(isoDate: string): Date | undefined {
   if (!isoDate) return undefined
   const [year, month, day] = isoDate.split('-').map(Number)
   if (!year || !month || !day) return undefined
-  return new Date(year, month - 1, day)
-}
-
-// แปลง Date กลับเป็น 'yyyy-MM-dd' ตามเวลาท้องถิ่นด้วยเหตุผลเดียวกัน ห้ามใช้ toISOString()
-function toIsoDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return fromLocalDateString(isoDate)
 }
 
 const displayFormatter = new Intl.DateTimeFormat('th-TH', {
@@ -53,12 +46,12 @@ export function DatePicker({
 
   const onSelectDate = (nextDate: Date | undefined) => {
     if (!nextDate) return
-    onChange(toIsoDate(nextDate))
+    onChange(toLocalDateString(nextDate))
     setIsOpen(false)
   }
 
   const onSelectToday = () => {
-    onChange(toIsoDate(new Date()))
+    onChange(toLocalDateString(new Date()))
     setIsOpen(false)
   }
 

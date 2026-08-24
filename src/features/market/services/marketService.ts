@@ -9,6 +9,7 @@ import type {
   IOilQuote,
   IOilStation,
 } from '@/types/market'
+import { toLocalDateString } from '@/utils/date'
 
 const REQUEST_TIMEOUT_MS = 10000
 // ราคาตลาดเปลี่ยนไม่บ่อย cache ไว้ 30 นาทีกันยิง API ต้นทางถี่เกินไป
@@ -190,15 +191,6 @@ export function isValidCurrencyCode(code: string): boolean {
 }
 
 // แปลงค่าเงินจากสกุลหนึ่งไปอีกสกุล — ผู้เรียกต้อง validate from/to/amount ให้ผ่านก่อนเรียกฟังก์ชันนี้เสมอ
-// วันที่ปัจจุบันตามเวลาท้องถิ่น ห้ามใช้ toISOString() เพราะคืนค่าตามโซน UTC ทำให้วันเพี้ยนหลัง 17:00 น. ไทย
-function getLocalIsoDate(): string {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, '0')
-  const day = String(today.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 // ปัดผลลัพธ์ให้เหลือทศนิยม 4 ตำแหน่ง กันค่าคลาดเคลื่อนของเลขทศนิยมหลุดออกไปให้ผู้ใช้เห็น
 // (เช่น 1000 * 0.0306 ได้ 30.599999999999998 แทนที่จะเป็น 30.6)
 function roundConversionResult(value: number): number {
@@ -208,7 +200,7 @@ function roundConversionResult(value: number): number {
 export async function convertCurrency(from: string, to: string, amount: number): Promise<ICurrencyConversion> {
   // สกุลต้นทางกับปลายทางเดียวกัน เรตคือ 1 เสมอ ไม่ต้องยิง API (Frankfurter ไม่คืนเรตของสกุลเดียวกับ base ให้)
   if (from === to) {
-    return { from, to, amount, rate: 1, result: amount, date: getLocalIsoDate() }
+    return { from, to, amount, rate: 1, result: amount, date: toLocalDateString(new Date()) }
   }
 
   const data = await fetchJson<IFrankfurterResponse>(

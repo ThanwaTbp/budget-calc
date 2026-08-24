@@ -23,15 +23,11 @@ export function setActiveStorageScope(userId: string | null): void {
   activeScope = userId ?? GUEST_SCOPE
 }
 
-export function getActiveStorageScope(): string {
-  return activeScope
-}
 
 export function toScopedKey(storeName: string, scope: string = activeScope): string {
   return `${storeName}:${scope}`
 }
 
-export const GUEST_STORAGE_SCOPE = GUEST_SCOPE
 
 const userScopedStateStorage: StateStorage = {
   getItem: (name) => {

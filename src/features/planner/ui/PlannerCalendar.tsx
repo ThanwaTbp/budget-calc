@@ -6,8 +6,9 @@ import { th } from 'react-day-picker/locale'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils'
-import { getDayIndicatorTone, getLocalDateString, parseLocalDateString } from '@/features/planner/hooks/usePlannerBoard'
+import { getDayIndicatorTone } from '@/features/planner/hooks/usePlannerBoard'
 import type { DayIndicatorTone, IDayTaskSummary } from '@/features/planner/type'
+import { fromLocalDateString, toLocalDateString } from '@/utils/date'
 
 interface IPlannerCalendar {
   selectedDate: string
@@ -42,7 +43,7 @@ function PlannerDayButton({ className, day, modifiers, dayIndicators, children, 
     if (modifiers.focused) buttonRef.current?.focus()
   }, [modifiers.focused])
 
-  const dateKey = getLocalDateString(day.date)
+  const dateKey = toLocalDateString(day.date)
   const summary = dayIndicators.get(dateKey)
   const hasTask = summary !== undefined && summary.total > 0
   const tone: DayIndicatorTone | null = hasTask && summary ? getDayIndicatorTone(summary) : null
@@ -95,7 +96,7 @@ export function PlannerCalendar({
 }: IPlannerCalendar) {
   const onSelect = (nextDate: Date | undefined) => {
     if (!nextDate) return
-    onSelectDate(getLocalDateString(nextDate))
+    onSelectDate(toLocalDateString(nextDate))
   }
 
   return (
@@ -106,7 +107,7 @@ export function PlannerCalendar({
         showOutsideDays
         month={visibleMonth}
         onMonthChange={onVisibleMonthChange}
-        selected={parseLocalDateString(selectedDate)}
+        selected={fromLocalDateString(selectedDate)}
         onSelect={onSelect}
         formatters={{ formatCaption: (date) => captionFormatter.format(date) }}
         components={{

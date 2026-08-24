@@ -8,6 +8,7 @@ import type {
   ITransactionYearOption,
 } from '@/features/transactions/type'
 import type { ITransaction, TransactionSource } from '@/types/finance'
+import { formatThaiMonthName } from '@/utils/date'
 import { getPeriodKey, getPeriodLabel, groupByPeriod, type PeriodGranularity } from '@/utils/period'
 
 // ต่อยอด filter ของฟีเจอร์ด้วย field source ที่ใช้เฉพาะหน้านี้
@@ -37,13 +38,6 @@ export const ALL_MONTHS_VALUE = 'all'
 
 // จำนวนกลุ่มช่วงเวลาที่แสดงต่อหน้า กันตารางยาวเกินไปเวลาเลือกรายวันแล้วมีข้อมูลหลายร้อยวัน
 const PERIOD_GROUP_PAGE_SIZE = 15
-
-const monthNameFormatter = new Intl.DateTimeFormat('th-TH', { month: 'long' })
-
-// ชื่อเดือนภาษาไทยเดี่ยวๆ ไม่รวมปี เช่น 'มกราคม' (ต่างจาก getPeriodLabel ที่คืนป้ายพร้อมปีเสมอ)
-function formatMonthName(month: number): string {
-  return monthNameFormatter.format(new Date(2000, month - 1, 1))
-}
 
 function getCurrentYear(): string {
   return String(new Date().getFullYear())
@@ -100,7 +94,7 @@ export function useTransactionList() {
     const months = Array.from({ length: 12 }, (_, index) => {
       const monthNumber = String(index + 1).padStart(2, '0')
       const monthKey = `${yearValue}-${monthNumber}`
-      return { value: monthNumber, label: formatMonthName(index + 1), hasData: monthKeysWithData.has(monthKey) }
+      return { value: monthNumber, label: formatThaiMonthName(index + 1), hasData: monthKeysWithData.has(monthKey) }
     })
 
     return [{ value: ALL_MONTHS_VALUE, label: 'ทั้งปี', hasData: true }, ...months]

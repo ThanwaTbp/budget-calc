@@ -11,26 +11,7 @@ import type {
   PlannerViewMode,
 } from '@/features/planner/type'
 import type { ITask } from '@/types/planner'
-
-// แปลง Date เป็น 'yyyy-MM-dd' ตามเวลาท้องถิ่น ห้ามใช้ toISOString() เพราะคืนค่าตามโซน UTC
-// ทำให้วันที่เพี้ยนย้อนหลัง 1 วันในช่วงหลัง 17:00 น. ตามเวลาไทย (UTC+7)
-export function getLocalDateString(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-// แปลง 'yyyy-MM-dd' กลับเป็น Date ตามเวลาท้องถิ่นด้วยเหตุผลเดียวกัน
-export function parseLocalDateString(isoDate: string): Date {
-  const [year, month, day] = isoDate.split('-').map(Number)
-  return new Date(year, month - 1, day)
-}
-
-// คีย์ 'yyyy-MM' ของเดือนใดเดือนหนึ่ง ใช้เทียบ prefix ของ 'date' (yyyy-MM-dd) เพื่อกรองงานของเดือนนั้น
-export function getMonthKey(month: Date): string {
-  return `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`
-}
+import { toLocalDateString, fromLocalDateString, toYearMonthString } from '@/utils/date'
 
 // จัดเรียงงานของวันเดียวกัน: งานที่ระบุเวลาเรียงตามเวลาเริ่มก่อน-หลัง ตามด้วยงานไม่ระบุเวลา (เรียงตามลำดับที่สร้าง)
 export function sortDayTasks(tasks: ITask[]): ITask[] {
@@ -85,7 +66,7 @@ export function getDayIndicatorTone(summary: IDayTaskSummary): DayIndicatorTone 
 
 // สรุปยอดงานของเดือนที่ visibleMonth ระบุ (เทียบด้วย prefix 'yyyy-MM' ของ date)
 export function calcMonthSummary(tasks: ITask[], visibleMonth: Date): IMonthTaskSummary {
-  const monthKey = getMonthKey(visibleMonth)
+  const monthKey = toYearMonthString(visibleMonth)
   const monthTasks = tasks.filter((task) => task.date.startsWith(monthKey))
   const doneCount = monthTasks.filter((task) => task.status === 'done').length
 
@@ -99,11 +80,11 @@ export function calcMonthSummary(tasks: ITask[], visibleMonth: Date): IMonthTask
 // จัดกลุ่มงานของเดือนที่ visibleMonth ระบุตามวันที่ เรียงวันเก่า→ใหม่ (ในวันเดียวกันเรียงตามเวลาผ่าน sortDayTasks)
 // กรองด้วย statusFilter ก่อนจัดกลุ่ม ทำให้วันที่ไม่มีงานตรงตัวกรองหายไปจากลิสต์โดยอัตโนมัติ
 export function buildMonthGroups(tasks: ITask[], visibleMonth: Date, statusFilter: PlannerStatusFilter): IMonthTaskGroup[] {
-  const monthKey = getMonthKey(visibleMonth)
+  const monthKey = toYearMonthString(visibleMonth)
   const monthTasks = tasks.filter((task) => task.date.startsWith(monthKey))
   const filteredTasks = statusFilter === 'all' ? monthTasks : monthTasks.filter((task) => task.status === statusFilter)
   const tasksByDate = buildTasksByDate(filteredTasks)
-  const todayKey = getLocalDateString(new Date())
+  const todayKey = toLocalDateString(new Date())
 
   return Array.from(tasksByDate.entries())
     .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
@@ -119,7 +100,7 @@ export function buildMonthGroups(tasks: ITask[], visibleMonth: Date, statusFilte
 export function usePlannerBoard() {
   const tasks = usePlannerStore((state) => state.tasks)
 
-  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString(new Date()))
+  const [selectedDate, setSelectedDate] = useState(() => toLocalDateString(new Date()))
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const today = new Date()
     return new Date(today.getFullYear(), today.getMonth(), 1)
@@ -157,7 +138,7 @@ export function usePlannerBoard() {
   // เลือกวันที่ใหม่แล้วให้เดือนที่แสดงบนปฏิทินตามไปด้วย (กรณีกดวันนอกเดือนปัจจุบันที่โผล่มาในตาราง หรือกดหัวกลุ่มในมุมมองรายเดือน)
   const onSelectDate = (nextDate: string) => {
     setSelectedDate(nextDate)
-    const nextMonth = parseLocalDateString(nextDate)
+    const nextMonth = fromLocalDateString(nextDate)
     setVisibleMonth((currentMonth) => {
       const isSameMonth =
         currentMonth.getFullYear() === nextMonth.getFullYear() && currentMonth.getMonth() === nextMonth.getMonth()

@@ -4,25 +4,20 @@ import { useMemo, useState } from 'react'
 import { useBudgetStore } from '@/features/budget/store/useBudgetStore'
 import { useTransactionStore } from '@/features/transactions/store/useTransactionStore'
 import { calcBudgetTotals, calcBudgetUsage } from '@/features/budget/utils/budgetCalc'
+import { toYearMonthString } from '@/utils/date'
 import { getPeriodLabel } from '@/utils/period'
 import { toYearMonth } from '@/utils/format'
 
 // คืนเดือนปัจจุบันตามเวลาท้องถิ่นรูปแบบ 'yyyy-MM'
-// ห้ามใช้ toISOString() เพราะตีความเป็น UTC ทำให้เดือนเพี้ยนได้ช่วงใกล้สิ้น/ต้นเดือนตามเวลาไทย
 function getCurrentYearMonth(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  return `${year}-${month}`
+  return toYearMonthString(new Date())
 }
 
 // เลื่อนเดือนไปข้างหน้า/ถอยหลังตามจำนวนที่กำหนด คำนวณผ่าน Date object กันปัญหาเดือน 13/0 เอง
 function shiftYearMonth(yearMonth: string, offset: number): string {
   const [year, month] = yearMonth.split('-').map(Number)
   const shiftedDate = new Date(year, month - 1 + offset, 1)
-  const shiftedYear = shiftedDate.getFullYear()
-  const shiftedMonth = String(shiftedDate.getMonth() + 1).padStart(2, '0')
-  return `${shiftedYear}-${shiftedMonth}`
+  return toYearMonthString(shiftedDate)
 }
 
 // รวม state และ logic ของกระดานงบประมาณ: เดือนที่กำลังดู, ยอดใช้จ่ายต่อหมวด, ยอดรวม และหมวดที่ยังไม่ได้ตั้งงบ

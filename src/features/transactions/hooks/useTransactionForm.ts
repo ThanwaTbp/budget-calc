@@ -6,6 +6,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { useTransactionStore } from '@/features/transactions/store/useTransactionStore'
 import type { ITransaction, TransactionType } from '@/types/finance'
+import { getTodayDateString } from '@/utils/date'
 
 const transactionFormSchema = z.object({
   type: z.enum(['income', 'expense']),
@@ -20,16 +21,6 @@ const transactionFormSchema = z.object({
 type ITransactionFormInput = z.input<typeof transactionFormSchema>
 export type ITransactionFormValues = z.output<typeof transactionFormSchema>
 
-// คืนวันที่ปัจจุบันตามเวลาท้องถิ่นในรูปแบบ yyyy-MM-dd
-// ห้ามใช้ toISOString() เพราะคืนค่าตามโซน UTC ทำให้วันที่เพี้ยนย้อนหลัง 1 วัน
-// ในช่วงหลัง 17:00 น. ตามเวลาไทย (UTC+7)
-function getLocalDateString(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 // สร้างค่าเริ่มต้นของฟอร์มใหม่ (ใช้ทั้งตอน mount ครั้งแรกและตอนกดเพิ่มรายการใหม่)
 // amount เป็นค่าว่างแทน 0 เพื่อไม่ให้ผู้ใช้ต้องลบเลข 0 ทิ้งก่อนพิมพ์ทุกครั้ง
 function createEmptyFormValues(): ITransactionFormInput {
@@ -37,7 +28,7 @@ function createEmptyFormValues(): ITransactionFormInput {
     type: 'expense',
     amount: '',
     categoryId: '',
-    date: getLocalDateString(new Date()),
+    date: getTodayDateString(),
     note: '',
   }
 }

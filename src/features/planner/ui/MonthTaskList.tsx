@@ -6,10 +6,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EmptyState } from '@/components/common/EmptyState'
-import { parseLocalDateString } from '@/features/planner/hooks/usePlannerBoard'
 import { DayWeatherBadge } from '@/features/planner/ui/DayWeatherBadge'
 import { TaskListItem } from '@/features/planner/ui/TaskListItem'
 import type { IMonthTaskGroup, PlannerStatusFilter } from '@/features/planner/type'
+import { fromLocalDateString } from '@/utils/date'
 import type { ITaskWeather } from '@/features/weather/hooks/useTaskWeather'
 import type { ITask } from '@/types/planner'
 import { cn } from '@/lib/utils'
@@ -45,7 +45,7 @@ interface IMonthTaskGroupSection {
 
 // หัวข้อของหนึ่งวัน กดแล้วเลือกวันนั้นบนปฏิทินด้วย วันนี้ให้หัวข้อเน้นสีหลักพร้อมป้าย 'วันนี้'
 function MonthTaskGroupSection({ group, onSelectDate, onEditTask, weather }: IMonthTaskGroupSection) {
-  const groupTitle = groupHeaderFormatter.format(parseLocalDateString(group.date))
+  const groupTitle = groupHeaderFormatter.format(fromLocalDateString(group.date))
 
   return (
     <div className="flex flex-col gap-2">

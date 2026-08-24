@@ -11,6 +11,8 @@ import { usePlannerStore } from '@/features/planner/store/usePlannerStore'
 import { useLotteryTicketStore } from '@/features/lottery/store/useLotteryTicketStore'
 import { useBudgetStore } from '@/features/budget/store/useBudgetStore'
 import { useRecurringStore } from '@/features/recurring/store/useRecurringStore'
+import { useWeatherLocationStore } from '@/features/weather/store/useWeatherLocationStore'
+import { useMenuSettingsStore } from '@/features/settings/store/useMenuSettingsStore'
 import { useSyncStore } from '@/features/sync/store/useSyncStore'
 import { clearSyncQueue, setSyncUserId } from '@/features/sync/services/syncQueue'
 import { isRemoteReady, pushSnapshot, toThaiSyncErrorMessage } from '@/features/sync/services/remoteStore'
@@ -24,6 +26,8 @@ const SCOPED_STORE_NAMES = [
   'budget-calc:lottery',
   'budget-calc:budgets',
   'budget-calc:recurring',
+  'budget-calc:weather',
+  'budget-calc:menu-settings',
 ]
 
 interface IApplyUserDataScopeOptions {
@@ -48,6 +52,8 @@ export async function applyUserDataScope(
   useLotteryTicketStore.getState().onReset()
   useBudgetStore.getState().onReset()
   useRecurringStore.getState().onReset()
+  useWeatherLocationStore.getState().onReset()
+  useMenuSettingsStore.getState().onReset()
   resumeStorageWrites()
 
   if (options.migrateGuestData && userId) {
@@ -63,6 +69,8 @@ export async function applyUserDataScope(
   await useLotteryTicketStore.persist.rehydrate()
   await useBudgetStore.persist.rehydrate()
   await useRecurringStore.persist.rehydrate()
+  await useWeatherLocationStore.persist.rehydrate()
+  await useMenuSettingsStore.persist.rehydrate()
 
   // จากจุดนี้หน้าจอวาดข้อมูลจาก localStorage cache ได้ทันทีแล้ว ที่เหลือทำต่อแบบ async เบื้องหลัง
   // ผูกคิว sync เข้ากับผู้ใช้คนปัจจุบันก่อนเสมอ (null = ออกจากระบบ/โหมด guest ไม่ต้อง sync ขึ้น cloud)

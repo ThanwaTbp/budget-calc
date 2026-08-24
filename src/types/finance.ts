@@ -57,10 +57,3 @@ export interface IPayrollResult {
   totalDeduction: number
   netPay: number
 }
-
-export interface IFinanceSummary {
-  totalIncome: number
-  totalExpense: number
-  balance: number
-  payrollCost: number
-}

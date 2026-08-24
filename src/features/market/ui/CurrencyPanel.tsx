@@ -145,24 +145,40 @@ export function CurrencyPanel() {
       <div className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">ตารางเรตอ้างอิง (เทียบกับ THB)</h2>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>สกุลเงิน</TableHead>
-              <TableHead className="text-right">1 THB</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {currencyQuote.rates.map((rate) => (
-              <TableRow key={rate.code}>
-                <TableCell>
-                  {rate.name} ({rate.code})
-                </TableCell>
-                <TableCell className="tabular text-right">{formatMarketNumber(rate.rate)}</TableCell>
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>สกุลเงิน</TableHead>
+                <TableHead className="text-right">1 THB</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {currencyQuote.rates.map((rate) => (
+                <TableRow key={rate.code}>
+                  <TableCell>
+                    {rate.name} ({rate.code})
+                  </TableCell>
+                  <TableCell className="tabular text-right">{formatMarketNumber(rate.rate)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="flex flex-col gap-3 md:hidden">
+          {currencyQuote.rates.map((rate) => (
+            <div
+              key={rate.code}
+              className="flex items-center justify-between gap-2 rounded-xl border border-border p-4"
+            >
+              <span className="text-sm font-medium">
+                {rate.name} ({rate.code})
+              </span>
+              <span className="tabular text-base font-semibold">{formatMarketNumber(rate.rate)}</span>
+            </div>
+          ))}
+        </div>
 
         <p className="text-sm text-muted-foreground">
           ข้อมูลวันที่ {currencyQuote.date} · ข้อมูลจาก ECB ไม่อัปเดตในวันหยุด

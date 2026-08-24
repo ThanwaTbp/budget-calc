@@ -20,7 +20,7 @@ type PayItemKind = 'earning' | 'deduction'
 
 interface ICategory { id, name, type, icon, chartToken }
 interface ITransaction { id, type, amount, categoryId, note, date, createdAt, source, sourceRefId }
-interface IEmployee { id, name, note, isActive, createdAt }        // พนักงานเก็บแค่ชื่อ
+interface IEmployee { id, name, note, createdAt }        // พนักงานเก็บแค่ชื่อ (ตัดสถานะทำงานอยู่/พักงานออกแล้ว)
 interface IPayItem { id, label, amount, kind }
 interface IPayrollEntry { id, employeeId, date, items: IPayItem[], note, createdAt }
 interface IPayrollResult { entryId, employeeId, totalEarning, totalDeduction, netPay }
@@ -60,7 +60,7 @@ onRemovePayrollExpense(payrollEntryId)
 
 ### `@/features/payroll/store/usePayrollStore` — agent payroll เป็นคนสร้าง
 ```ts
-export interface IEmployeeInput { name: string; note: string; isActive: boolean }
+export interface IEmployeeInput { name: string; note: string }
 export interface IPayItemInput { label: string; amount: number; kind: PayItemKind }
 export interface IPayrollEntryInput { employeeId: string; date: string; note: string; items: IPayItemInput[] }
 
@@ -70,7 +70,6 @@ interface IPayrollStore {
   onCreateEmployee: (input: IEmployeeInput) => void
   onUpdateEmployee: (id: string, input: IEmployeeInput) => void
   onDeleteEmployee: (id: string) => void          // ลบรอบจ่ายของคนนั้น + รายจ่ายที่ผูกไว้ทั้งหมดด้วย
-  onToggleEmployeeActive: (id: string) => void
   onCreateEntry: (input: IPayrollEntryInput) => void
   onUpdateEntry: (id: string, input: IPayrollEntryInput) => void
   onDeleteEntry: (id: string) => void

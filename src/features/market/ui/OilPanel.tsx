@@ -59,22 +59,38 @@ export function OilPanel() {
       </Select>
 
       {selectedStation && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ชนิดน้ำมัน</TableHead>
-              <TableHead className="text-right">ราคา (บาท/ลิตร)</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ชนิดน้ำมัน</TableHead>
+                  <TableHead className="text-right">ราคา (บาท/ลิตร)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {selectedStation.fuels.map((fuel) => (
+                  <TableRow key={fuel.key}>
+                    <TableCell>{fuel.name}</TableCell>
+                    <TableCell className="tabular text-right">{formatNumber(fuel.price)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex flex-col gap-3 md:hidden">
             {selectedStation.fuels.map((fuel) => (
-              <TableRow key={fuel.key}>
-                <TableCell>{fuel.name}</TableCell>
-                <TableCell className="tabular text-right">{formatNumber(fuel.price)}</TableCell>
-              </TableRow>
+              <div
+                key={fuel.key}
+                className="flex items-center justify-between gap-2 rounded-xl border border-border p-4"
+              >
+                <span className="text-sm font-medium">{fuel.name}</span>
+                <span className="tabular text-base font-semibold">{formatNumber(fuel.price)} บาท/ลิตร</span>
+              </div>
             ))}
-          </TableBody>
-        </Table>
+          </div>
+        </>
       )}
 
       <p className="text-sm text-muted-foreground">ข้อมูลวันที่ {oilQuote.date}</p>

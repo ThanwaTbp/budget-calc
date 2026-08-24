@@ -20,7 +20,6 @@ export const APPWRITE_COLLECTIONS = {
   recurring: 'bc_recurring',
 } as const
 
-export type AppwriteCollectionKey = keyof typeof APPWRITE_COLLECTIONS
 
 // ชนิด attribute ที่ schema ของแอปใช้จริง (พอสำหรับ string/float เท่านั้น ไม่ต้องรองรับทุกชนิดของ Appwrite)
 export type IAppwriteAttributeType = 'string' | 'float'

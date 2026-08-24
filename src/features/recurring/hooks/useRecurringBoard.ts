@@ -6,15 +6,8 @@ import { useRecurringStore } from '@/features/recurring/store/useRecurringStore'
 import { useTransactionStore } from '@/features/transactions/store/useTransactionStore'
 import { getDueItems, isDueForPosting, resolveDueDate } from '@/features/recurring/utils/recurringSchedule'
 import type { IRecurringItem } from '@/types/recurring'
+import { getTodayDateString } from '@/utils/date'
 import { formatCurrency } from '@/utils/format'
-
-// แปลง Date เป็น 'yyyy-MM-dd' ตามเวลาท้องถิ่น ห้ามใช้ toISOString() เพราะคืนค่าตามโซน UTC ทำให้วันที่เพี้ยน
-function getLocalDateString(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 function sortByDayOfMonth(items: IRecurringItem[]): IRecurringItem[] {
   return [...items].sort((itemA, itemB) => itemA.dayOfMonth - itemB.dayOfMonth)
@@ -29,7 +22,7 @@ export function useRecurringBoard() {
   const onCreateTransaction = useTransactionStore((state) => state.onCreate)
 
   // คำนวณครั้งเดียวตอน mount ฝั่ง client พอ (หน้านี้ไม่จำเป็นต้องอัปเดตข้ามเที่ยงคืนแบบเรียลไทม์)
-  const todayIsoDate = useMemo(() => getLocalDateString(new Date()), [])
+  const todayIsoDate = useMemo(() => getTodayDateString(), [])
 
   const dueItems = useMemo(() => getDueItems(items, todayIsoDate), [items, todayIsoDate])
   const activeItems = useMemo(() => sortByDayOfMonth(items.filter((item) => item.isActive)), [items])
@@ -87,8 +80,6 @@ export function useRecurringBoard() {
   return {
     items: sortedItems,
     dueItems,
-    activeItems,
-    inactiveItems,
     totalDueAmount,
     monthlyIncomeTotal,
     monthlyExpenseTotal,

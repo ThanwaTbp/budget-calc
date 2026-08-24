@@ -11,10 +11,10 @@ import type {
   IYearOption,
   PayrollBoardTab,
 } from '@/features/payroll/type'
-import { formatMonthName, getDaysInMonth } from '@/features/payroll/utils/dateOptions'
 import { buildAvatarToneMap } from '@/features/payroll/utils/employee'
 import type { IPayrollEntry } from '@/types/finance'
 import { calcPayrollEntry } from '@/utils/calc'
+import { formatThaiMonthName, getDaysInMonth } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 import { getPeriodKey, getPeriodLabel, type PeriodGranularity } from '@/utils/period'
 
@@ -117,7 +117,7 @@ export function usePayrollBoard() {
     const months = Array.from({ length: 12 }, (_, index) => {
       const monthNumber = String(index + 1).padStart(2, '0')
       const monthKey = `${yearValue}-${monthNumber}`
-      return { value: monthNumber, label: formatMonthName(index + 1), hasData: monthKeysWithData.has(monthKey) }
+      return { value: monthNumber, label: formatThaiMonthName(index + 1), hasData: monthKeysWithData.has(monthKey) }
     })
 
     return [{ value: ALL_VALUE, label: 'ทั้งปี', hasData: true }, ...months]

@@ -1,23 +1,8 @@
 // รวม helper สำหรับแบ่งช่วงเวลา (วัน/เดือน/ปี) ใช้จัดกลุ่มรายรับรายจ่ายและรอบจ่ายค่าจ้าง
 
+import { fromLocalDateString } from '@/utils/date'
+
 export type PeriodGranularity = 'day' | 'month' | 'year'
-
-export interface IPeriodOption {
-  value: PeriodGranularity
-  label: string
-}
-
-export const PERIOD_OPTIONS: IPeriodOption[] = [
-  { value: 'day', label: 'รายวัน' },
-  { value: 'month', label: 'รายเดือน' },
-  { value: 'year', label: 'รายปี' },
-]
-
-// แปลง 'yyyy-MM-dd' เป็น Date ตามเวลาท้องถิ่น (new Date(string) จะตีความเป็น UTC ทำให้วันเพี้ยน)
-function toLocalDate(isoDate: string): Date {
-  const [year, month, day] = isoDate.split('-').map(Number)
-  return new Date(year, month - 1, day)
-}
 
 // key ต้องเรียงลำดับด้วยการเทียบ string ได้ตรงกับลำดับเวลาจริง
 export function getPeriodKey(isoDate: string, granularity: PeriodGranularity): string {
@@ -39,11 +24,11 @@ const buddhistYearFormatter = new Intl.DateTimeFormat('th-TH', { year: 'numeric'
 export function getPeriodLabel(periodKey: string, granularity: PeriodGranularity): string {
   switch (granularity) {
     case 'day':
-      return dayFormatter.format(toLocalDate(periodKey))
+      return dayFormatter.format(fromLocalDateString(periodKey))
     case 'month':
-      return monthFormatter.format(toLocalDate(`${periodKey}-01`))
+      return monthFormatter.format(fromLocalDateString(`${periodKey}-01`))
     case 'year':
-      return `ปี ${buddhistYearFormatter.format(toLocalDate(`${periodKey}-01-01`))}`
+      return `ปี ${buddhistYearFormatter.format(fromLocalDateString(`${periodKey}-01-01`))}`
   }
 }
 
