@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { useConfirm } from '@/components/common/ConfirmProvider'
 import { useLotteryTicketStore } from '@/features/lottery/store/useLotteryTicketStore'
 import { formatCurrency } from '@/utils/format'
+import { cn } from '@/lib/utils'
 import type { ILotteryTicket, ITicketCheckResult } from '@/types/lottery'
 
 interface ISavedTicketList {
@@ -59,7 +60,11 @@ export function SavedTicketList({ tickets, checkedTickets, totalReward }: ISaved
               className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
             >
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <span className="tabular text-lg font-semibold tracking-wider">{ticket.number}</span>
+                <span
+                  className={cn('tabular text-lg font-bold tracking-[0.15em]', isWinning && 'text-income')}
+                >
+                  {ticket.number}
+                </span>
                 {ticket.note && <span className="truncate text-sm text-muted-foreground">{ticket.note}</span>}
 
                 {isWinning && checkedResult ? (

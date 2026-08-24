@@ -6,7 +6,7 @@ import { useHydrated } from '@/hooks/useHydrated'
 import { useLotteryTicketStore } from '@/features/lottery/store/useLotteryTicketStore'
 import { useLotteryBoard } from '@/features/lottery/hooks/useLotteryBoard'
 import { DrawSelector } from '@/features/lottery/ui/DrawSelector'
-import { TicketCheckForm } from '@/features/lottery/ui/TicketCheckForm'
+import { TicketCheckCard } from '@/features/lottery/ui/TicketCheckCard'
 import { SavedTicketList } from '@/features/lottery/ui/SavedTicketList'
 import { DrawResultPanel } from '@/features/lottery/ui/DrawResultPanel'
 
@@ -35,6 +35,7 @@ export function LotteryPage() {
     return (
       <div className="flex flex-col gap-6">
         <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-64 w-full" />
         <Skeleton className="h-96 w-full" />
       </div>
     )
@@ -53,28 +54,29 @@ export function LotteryPage() {
         />
       </PageHeader>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-        <div className="flex flex-col gap-4">
-          <TicketCheckForm
-            quickCheckResult={quickCheckResult}
-            isQuickNumberSaved={isQuickNumberSaved}
-            isDrawLoaded={draw !== null}
-            onQuickCheck={onQuickCheck}
-            onSaveQuickNumber={onSaveQuickNumber}
-          />
+      <TicketCheckCard
+        drawLabel={draw?.label ?? null}
+        quickCheckResult={quickCheckResult}
+        isQuickNumberSaved={isQuickNumberSaved}
+        isDrawLoaded={draw !== null}
+        onQuickCheck={onQuickCheck}
+        onSaveQuickNumber={onSaveQuickNumber}
+      />
 
-          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <SavedTicketList tickets={tickets} checkedTickets={checkedTickets} totalReward={totalReward} />
-          </div>
+      <div className="grid gap-4 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <DrawResultPanel
+            draw={draw}
+            isLoading={isLoadingDraws || isLoadingDraw}
+            errorMessage={errorMessage}
+            checkedTickets={checkedTickets}
+            onRetry={onRetry}
+          />
         </div>
 
-        <DrawResultPanel
-          draw={draw}
-          isLoading={isLoadingDraws || isLoadingDraw}
-          errorMessage={errorMessage}
-          checkedTickets={checkedTickets}
-          onRetry={onRetry}
-        />
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm xl:col-span-1">
+          <SavedTicketList tickets={tickets} checkedTickets={checkedTickets} totalReward={totalReward} />
+        </div>
       </div>
 
       <p className="text-xs text-muted-foreground">

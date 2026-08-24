@@ -1,5 +1,6 @@
 'use client'
 
+import { CalendarDays } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { IDrawListItem } from '@/features/lottery/type'
@@ -17,12 +18,17 @@ export function DrawSelector({ draws, selectedDrawId, isLoading, onSelectDraw }:
 
   return (
     <Select
-      value={selectedDrawId ?? undefined}
+      // ใช้สตริงว่างแทน undefined ตอนยังไม่รู้งวด เพื่อให้เป็น controlled component ตลอด
+      // ถ้าส่ง undefined ไปก่อนแล้วค่อยมีค่า React จะเตือนว่าเปลี่ยนจาก uncontrolled เป็น controlled กลางคัน
+      value={selectedDrawId ?? ''}
       onValueChange={onSelectDraw}
       disabled={isLoading || draws.length === 0}
     >
       <SelectTrigger className="w-full sm:w-60" aria-label="เลือกงวดหวย">
-        <SelectValue placeholder={isLoading ? 'กำลังโหลดงวด...' : 'เลือกงวด'} />
+        <span className="flex items-center gap-1.5">
+          <CalendarDays className="size-4 text-muted-foreground" />
+          <SelectValue placeholder={isLoading ? 'กำลังโหลดงวด...' : 'เลือกงวด'} />
+        </span>
       </SelectTrigger>
       <SelectContent>
         {draws.map((drawItem) => (
