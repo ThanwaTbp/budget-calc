@@ -19,8 +19,8 @@ export interface IDayTaskSummary {
 // ตัวกรองสถานะงานในลิสต์ของวันที่เลือก/เดือนที่เลือก
 export type PlannerStatusFilter = 'all' | 'todo' | 'done'
 
-// มุมมองของลิสต์งาน: รายวัน (งานของวันที่เลือกบนปฏิทิน) หรือรายเดือน (งานทั้งเดือนจัดกลุ่มตามวัน)
-export type PlannerViewMode = 'day' | 'month'
+// มุมมองหน้าวางแผน: รายวัน, รายเดือนแบบลิสต์ หรือปฏิทินทีมขนาดใหญ่ที่แสดงงานในแต่ละวัน
+export type PlannerViewMode = 'day' | 'month' | 'calendar'
 
 // โทนสีของตัวบ่งชี้ในช่องวันที่ปฏิทิน: pending = ยังมีงานค้างอยู่, done = เสร็จหมดทุกงานแล้ว
 export type DayIndicatorTone = 'pending' | 'done'

@@ -1,5 +1,6 @@
 'use client'
 
+import { CalendarDays, List, Rows3 } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { PlannerViewMode } from '@/features/planner/type'
 
@@ -8,13 +9,23 @@ interface IPlannerViewToggle {
   onViewModeChange: (mode: PlannerViewMode) => void
 }
 
-// สลับมุมมองลิสต์งานระหว่างรายวัน (งานของวันที่เลือกบนปฏิทิน) กับรายเดือน (งานทั้งเดือนจัดกลุ่มตามวัน)
+// สลับมุมมองระหว่างงานรายวัน, ลิสต์งานรายเดือน และปฏิทินทีมขนาดใหญ่
 export function PlannerViewToggle({ viewMode, onViewModeChange }: IPlannerViewToggle) {
   return (
     <Tabs value={viewMode} onValueChange={(value) => onViewModeChange(value as PlannerViewMode)}>
-      <TabsList>
-        <TabsTrigger value="day">รายวัน</TabsTrigger>
-        <TabsTrigger value="month">รายเดือน</TabsTrigger>
+      <TabsList className="w-full sm:w-fit">
+        <TabsTrigger value="day">
+          <List />
+          รายวัน
+        </TabsTrigger>
+        <TabsTrigger value="month">
+          <Rows3 />
+          รายเดือน
+        </TabsTrigger>
+        <TabsTrigger value="calendar">
+          <CalendarDays />
+          ปฏิทิน
+        </TabsTrigger>
       </TabsList>
     </Tabs>
   )

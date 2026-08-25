@@ -12,6 +12,7 @@ import { usePlannerBoard } from '@/features/planner/hooks/usePlannerBoard'
 import { DayTaskList } from '@/features/planner/ui/DayTaskList'
 import { MonthTaskList } from '@/features/planner/ui/MonthTaskList'
 import { PlannerCalendar } from '@/features/planner/ui/PlannerCalendar'
+import { PlannerMonthBoard } from '@/features/planner/ui/PlannerMonthBoard'
 import { PlannerSummaryBar } from '@/features/planner/ui/PlannerSummaryBar'
 import { PlannerViewToggle } from '@/features/planner/ui/PlannerViewToggle'
 import { TaskDialog } from '@/features/planner/ui/TaskDialog'
@@ -31,6 +32,7 @@ export function PlannerPage() {
     onStatusFilterChange,
     viewMode,
     onViewModeChange,
+    tasksByDate,
     dayIndicators,
     monthSummary,
     monthGroups,
@@ -47,6 +49,12 @@ export function PlannerPage() {
   const [editingTask, setEditingTask] = useState<ITask | null>(null)
 
   const onCreateTask = () => {
+    setEditingTask(null)
+    setIsDialogOpen(true)
+  }
+
+  const onCreateTaskForDate = (date: string) => {
+    onSelectDate(date)
     setEditingTask(null)
     setIsDialogOpen(true)
   }
@@ -73,7 +81,7 @@ export function PlannerPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="วางแผนงาน" description="จัดตารางงานรายวัน ดูภาพรวมทั้งเดือนได้ในที่เดียว">
+      <PageHeader title="วางแผนงาน" description="จัดตารางงานของทีมและดู event ทั้งเดือนได้ในที่เดียว">
         <Button size="lg" onClick={onCreateTask}>
           <Plus />
           เพิ่มงาน
@@ -91,22 +99,44 @@ export function PlannerPage() {
 
       <PlannerSummaryBar monthSummary={monthSummary} monthLabel={monthLabelFormatter.format(visibleMonth)} />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
-        <div className="rounded-xl border border-border bg-card p-2 shadow-sm">
-          <PlannerCalendar
+      <PlannerViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
+
+      {viewMode === 'calendar' ? (
+        <div className="flex flex-col gap-4">
+          <PlannerMonthBoard
             selectedDate={selectedDate}
             onSelectDate={onSelectDate}
             visibleMonth={visibleMonth}
             onVisibleMonthChange={onVisibleMonthChange}
-            dayIndicators={dayIndicators}
+            tasksByDate={tasksByDate}
+            onEditTask={onEditTask}
+          />
+
+          <DayTaskList
+            selectedDate={selectedDate}
+            tasks={selectedDayTasks}
+            counts={selectedDayCounts}
+            statusFilter={statusFilter}
+            onStatusFilterChange={onStatusFilterChange}
+            onCreateTask={() => onCreateTaskForDate(selectedDate)}
+            onEditTask={onEditTask}
+            weather={getWeatherForDate(selectedDate)}
           />
         </div>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+          <div className="rounded-xl border border-border bg-card p-2 shadow-sm">
+            <PlannerCalendar
+              selectedDate={selectedDate}
+              onSelectDate={onSelectDate}
+              visibleMonth={visibleMonth}
+              onVisibleMonthChange={onVisibleMonthChange}
+              dayIndicators={dayIndicators}
+            />
+          </div>
 
-        {hasAnyTask ? (
-          <div className="flex flex-col gap-3">
-            <PlannerViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
-
-            {viewMode === 'day' ? (
+          {hasAnyTask ? (
+            viewMode === 'day' ? (
               <DayTaskList
                 selectedDate={selectedDate}
                 tasks={selectedDayTasks}
@@ -129,19 +159,23 @@ export function PlannerPage() {
                 onEditTask={onEditTask}
                 getWeatherForDate={getWeatherForDate}
               />
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center justify-center rounded-xl border border-border bg-card p-6 shadow-sm">
-            <EmptyState icon={CalendarPlus} title="ยังไม่มีงานเลย" description="เพิ่มงานแรกเพื่อเริ่มวางแผนตารางงานของคุณ">
-              <Button onClick={onCreateTask}>
-                <Plus />
-                เพิ่มงาน
-              </Button>
-            </EmptyState>
-          </div>
-        )}
-      </div>
+            )
+          ) : (
+            <div className="flex items-center justify-center rounded-xl border border-border bg-card p-6 shadow-sm">
+              <EmptyState
+                icon={CalendarPlus}
+                title="ยังไม่มีงานเลย"
+                description="เพิ่มงานแรกเพื่อเริ่มวางแผนตารางงานของทีม"
+              >
+                <Button onClick={onCreateTask}>
+                  <Plus />
+                  เพิ่มงาน
+                </Button>
+              </EmptyState>
+            </div>
+          )}
+        </div>
+      )}
 
       <TaskDialog
         open={isDialogOpen}
