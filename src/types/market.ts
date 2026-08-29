@@ -50,3 +50,22 @@ export interface ICurrencyConversion {
   result: number
   date: string
 }
+
+export interface IStockQuote {
+  symbol: string
+  name: string
+  exchange: string
+  price: number
+  change: number
+  changePercentage: number
+  previousClose: number
+  dayLow: number
+  dayHigh: number
+  volume: number
+}
+
+export interface IStockQuoteList {
+  quotes: IStockQuote[]
+  updatedAt: string
+  isDelayed: boolean
+}

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { CalendarPlus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,9 +11,8 @@ import { usePlannerBoard } from '@/features/planner/hooks/usePlannerBoard'
 import { DayTaskList } from '@/features/planner/ui/DayTaskList'
 import { MonthTaskList } from '@/features/planner/ui/MonthTaskList'
 import { PlannerCalendar } from '@/features/planner/ui/PlannerCalendar'
+import { PlannerControlBar } from '@/features/planner/ui/PlannerControlBar'
 import { PlannerMonthBoard } from '@/features/planner/ui/PlannerMonthBoard'
-import { PlannerSummaryBar } from '@/features/planner/ui/PlannerSummaryBar'
-import { PlannerViewToggle } from '@/features/planner/ui/PlannerViewToggle'
 import { TaskDialog } from '@/features/planner/ui/TaskDialog'
 import { useTaskWeather } from '@/features/weather/hooks/useTaskWeather'
 import type { ITask } from '@/types/planner'
@@ -81,25 +79,21 @@ export function PlannerPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="วางแผนงาน" description="จัดตารางงานของทีมและดู event ทั้งเดือนได้ในที่เดียว">
+      <PageHeader title="วางแผนงาน" description="เห็นภาพรวม เลือกวัน แล้วจัดการงานต่อได้โดยไม่เสียบริบท">
         <Button size="lg" onClick={onCreateTask}>
           <Plus />
           เพิ่มงาน
         </Button>
       </PageHeader>
 
-      {hasForecast && (
-        <p className="text-sm text-muted-foreground">
-          สภาพอากาศ: {locationName} ·{' '}
-          <Link href="/weather" className="underline hover:text-foreground">
-            เปลี่ยนสถานที่
-          </Link>
-        </p>
-      )}
-
-      <PlannerSummaryBar monthSummary={monthSummary} monthLabel={monthLabelFormatter.format(visibleMonth)} />
-
-      <PlannerViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
+      <PlannerControlBar
+        viewMode={viewMode}
+        onViewModeChange={onViewModeChange}
+        monthSummary={monthSummary}
+        monthLabel={monthLabelFormatter.format(visibleMonth)}
+        hasForecast={hasForecast}
+        locationName={locationName}
+      />
 
       {viewMode === 'calendar' ? (
         <div className="flex flex-col gap-4">

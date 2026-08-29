@@ -8,16 +8,21 @@ import type {
   IGoldQuote,
   IOilQuote,
   IOilStation,
+  IStockQuote,
+  IStockQuoteList,
 } from '@/types/market'
 import { toLocalDateString } from '@/utils/date'
 
 const REQUEST_TIMEOUT_MS = 10000
 // ราคาตลาดเปลี่ยนไม่บ่อย cache ไว้ 30 นาทีกันยิง API ต้นทางถี่เกินไป
 const CACHE_REVALIDATE_SECONDS = 1800
+const STOCK_CACHE_REVALIDATE_SECONDS = 900
 
 const GOLD_ENDPOINT = 'https://api.chnwt.dev/thai-gold-api/latest'
 const OIL_ENDPOINT = 'https://api.chnwt.dev/thai-oil-api/latest'
 const CURRENCY_ENDPOINT = 'https://api.frankfurter.app/latest'
+const STOCK_ENDPOINT = 'https://financialmodelingprep.com/stable/batch-quote'
+const STOCK_SYMBOLS = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA', 'BRK-B']
 
 // map รหัสปั๊มน้ำมัน -> ชื่อภาษาไทย ตามปั๊มที่ API ต้นทางรองรับ (docs/SPEC.md)
 const STATION_NAME_MAP: Record<string, string> = {
@@ -84,13 +89,32 @@ interface IFrankfurterResponse {
   rates: Record<string, number>
 }
 
-async function fetchJson<TResponseBody>(url: string, errorMessage: string): Promise<TResponseBody> {
+interface IFmpStockQuote {
+  symbol?: string
+  name?: string
+  exchange?: string
+  price?: number
+  change?: number
+  changePercentage?: number
+  changesPercentage?: number
+  previousClose?: number
+  dayLow?: number
+  dayHigh?: number
+  volume?: number
+  timestamp?: number
+}
+
+async function fetchJson<TResponseBody>(
+  url: string,
+  errorMessage: string,
+  revalidate = CACHE_REVALIDATE_SECONDS,
+): Promise<TResponseBody> {
   let response: Response
 
   try {
     response = await fetch(url, {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      next: { revalidate: CACHE_REVALIDATE_SECONDS },
+      next: { revalidate },
     })
   } catch {
     throw new Error('เชื่อมต่อแหล่งข้อมูลราคาตลาดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง')
@@ -214,4 +238,63 @@ export async function convertCurrency(from: string, to: string, amount: number):
   }
 
   return { from, to, amount, rate, result: roundConversionResult(amount * rate), date: data.date }
+}
+
+function isFiniteNumber(value: number | undefined): value is number {
+  return value !== undefined && Number.isFinite(value)
+}
+
+// ราคาหุ้นเรียกแบบ batch หนึ่งครั้งต่อรอบและใช้ API key ฝั่งเซิร์ฟเวอร์เท่านั้น ห้ามเปลี่ยนเป็น NEXT_PUBLIC_
+export async function fetchUsStockQuotes(): Promise<IStockQuoteList> {
+  const apiKey = process.env.FMP_API_KEY?.trim() ?? ''
+  if (!apiKey) {
+    throw new Error('ยังไม่ได้ตั้งค่า FMP_API_KEY สำหรับดึงราคาหุ้นสหรัฐฯ')
+  }
+
+  const searchParams = new URLSearchParams({ symbols: STOCK_SYMBOLS.join(','), apikey: apiKey })
+  const data = await fetchJson<IFmpStockQuote[]>(
+    `${STOCK_ENDPOINT}?${searchParams.toString()}`,
+    'ดึงราคาหุ้นสหรัฐฯ ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',
+    STOCK_CACHE_REVALIDATE_SECONDS,
+  )
+
+  if (!Array.isArray(data)) {
+    throw new Error('รูปแบบข้อมูลหุ้นจากต้นทางไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง')
+  }
+
+  const quotes: IStockQuote[] = data
+    .map((quote) => {
+      const changePercentage = quote.changePercentage ?? quote.changesPercentage
+      if (
+        !quote.symbol ||
+        !isFiniteNumber(quote.price) ||
+        !isFiniteNumber(quote.change) ||
+        !isFiniteNumber(changePercentage)
+      ) {
+        return null
+      }
+
+      return {
+        symbol: quote.symbol,
+        name: quote.name?.trim() || quote.symbol,
+        exchange: quote.exchange?.trim() || 'US',
+        price: quote.price,
+        change: quote.change,
+        changePercentage,
+        previousClose: isFiniteNumber(quote.previousClose) ? quote.previousClose : quote.price - quote.change,
+        dayLow: isFiniteNumber(quote.dayLow) ? quote.dayLow : quote.price,
+        dayHigh: isFiniteNumber(quote.dayHigh) ? quote.dayHigh : quote.price,
+        volume: isFiniteNumber(quote.volume) ? quote.volume : 0,
+      }
+    })
+    .filter((quote): quote is IStockQuote => quote !== null)
+
+  if (quotes.length === 0) {
+    throw new Error('ไม่พบราคาหุ้นสหรัฐฯ จากต้นทาง กรุณาลองใหม่ภายหลัง')
+  }
+
+  const latestTimestamp = data.reduce((latest, quote) => Math.max(latest, quote.timestamp ?? 0), 0)
+  const updatedAt = latestTimestamp > 0 ? new Date(latestTimestamp * 1000).toISOString() : new Date().toISOString()
+
+  return { quotes, updatedAt, isDelayed: true }
 }

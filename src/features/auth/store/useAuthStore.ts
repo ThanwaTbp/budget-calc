@@ -1,10 +1,19 @@
 import { create } from 'zustand'
-import type { AuthStatus, IAuthUser, ILoginInput, IRegisterInput } from '@/features/auth/type'
+import type {
+  AuthStatus,
+  IAuthUser,
+  ILoginInput,
+  IRegisterInput,
+  IUpdateNameInput,
+  IUpdatePasswordInput,
+} from '@/features/auth/type'
 import {
   getCurrentUser,
   loginWithEmailPassword,
   logoutCurrentSession,
   registerAccount,
+  updateCurrentUserName,
+  updateCurrentUserPassword,
 } from '@/features/auth/services/authService'
 import { applyUserDataScope } from '@/features/auth/services/sessionDataService'
 
@@ -14,6 +23,8 @@ interface IAuthStore {
   onRestoreSession: () => Promise<void>
   onLogin: (input: ILoginInput) => Promise<void>
   onRegister: (input: IRegisterInput) => Promise<void>
+  onUpdateName: (input: IUpdateNameInput) => Promise<void>
+  onUpdatePassword: (input: IUpdatePasswordInput) => Promise<void>
   onLogout: () => Promise<void>
 }
 
@@ -46,6 +57,15 @@ export const useAuthStore = create<IAuthStore>((set) => ({
     const user = await registerAccount(input)
     await applyUserDataScope(user.id, { migrateGuestData: true })
     set({ user, status: 'authenticated' })
+  },
+
+  onUpdateName: async (input) => {
+    const user = await updateCurrentUserName(input)
+    set({ user })
+  },
+
+  onUpdatePassword: async (input) => {
+    await updateCurrentUserPassword(input)
   },
 
   onLogout: async () => {

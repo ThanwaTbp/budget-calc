@@ -1,7 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { LogOut } from 'lucide-react'
+import Link from 'next/link'
+import { LogOut, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -15,18 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useConfirm } from '@/components/common/ConfirmProvider'
 import { useAuthStore } from '@/features/auth/store/useAuthStore'
-
-// ตัวย่ออักษรจากชื่อผู้ใช้ ใช้เป็น fallback ของ Avatar เช่น 'สมชาย ใจดี' -> 'สจ'
-function getUserInitials(name: string): string {
-  const trimmedName = name.trim()
-  if (!trimmedName) return '?'
-
-  const nameParts = trimmedName.split(/\s+/)
-  return nameParts
-    .slice(0, 2)
-    .map((namePart) => namePart.charAt(0).toUpperCase())
-    .join('')
-}
+import { getUserInitials } from '@/features/auth/utils/user'
 
 export function UserMenu() {
   const router = useRouter()
@@ -65,6 +55,13 @@ export function UserMenu() {
           <span className="truncate text-sm font-medium text-foreground">{user.name}</span>
           <span className="truncate text-xs text-muted-foreground">{user.email}</span>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/profile">
+            <UserRound />
+            โปรไฟล์ของฉัน
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={onRequestLogout}>
           <LogOut />

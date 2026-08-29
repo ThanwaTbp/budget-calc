@@ -168,6 +168,7 @@ appwriteAccount.createRecovery({ email, url })                         // ขอ
 appwriteAccount.updateRecovery({ userId, secret, password })           // ตั้งรหัสใหม่จากลิงก์
 appwriteAccount.createEmailVerification({ url })                       // ส่งอีเมลยืนยัน
 appwriteAccount.updateEmailVerification({ userId, secret })            // ยืนยันอีเมลจากลิงก์
+appwriteAccount.updateName({ name })                                   // แก้ชื่อที่แสดง
 appwriteAccount.updatePassword({ password, oldPassword })              // เปลี่ยนรหัสตอนล็อกอินอยู่
 ```
 `userId` ตอนสมัครใช้ `ID.unique()` จาก `appwrite`
@@ -199,7 +200,15 @@ await usePayrollStore.persist.rehydrate()
 | `/register` | สมัครสมาชิก |
 | `/forgot-password` | กรอกอีเมลเพื่อขอลิงก์รีเซ็ตรหัส |
 | `/reset-password` | ตั้งรหัสใหม่ (รับ `userId` + `secret` จาก query) |
+| `/profile` | แก้ชื่อที่แสดงและรหัสผ่าน · อีเมลเป็น read-only และห้ามมี action สำหรับเปลี่ยนอีเมล |
 | `/` `/transactions` `/payroll` | ต้องล็อกอินก่อน ถ้ายังไม่ล็อกอินให้เด้งไป `/login` |
+
+## โครงเมนูหลัก
+- **การเงิน**: ภาพรวม · รายรับ-รายจ่าย · งบประมาณ · รายการประจำ · ค่าจ้างพนักงาน
+- **งานและเครื่องมือ**: วางแผนงาน · ราคาตลาด · สภาพอากาศ · ตรวจหวย
+- **ข้อมูล**: ส่งออกข้อมูล
+- **ระบบ**: สถานะระบบ · ตั้งค่า — กลุ่มนี้ยึดด้านล่างของ sidebar และ **ตั้งค่าต้องอยู่ลำดับสุดท้ายเสมอ**
+- หน้าโปรไฟล์เข้าจากเมนูผู้ใช้บน TopBar เพื่อไม่ให้ sidebar แน่นเกินไป
 
 ## ข้อความ error ต้องเป็นภาษาไทย
 แปลง error code ของ Appwrite เป็นข้อความไทยที่เข้าใจง่าย เช่น
@@ -343,6 +352,7 @@ index: `date_idx` (key, `date`)
 
 ## มุมมองงาน — รายวัน / รายเดือน / ปฏิทิน
 ปุ่มสลับมุมมอง (`PlannerViewToggle`): **รายวัน** (งานของวันที่เลือกบนปฏิทินย่อ) / **รายเดือน** (งานทั้งเดือนจัดกลุ่มตามวันด้วย `buildMonthGroups`) / **ปฏิทิน** (ปฏิทินทีมขนาดใหญ่ที่แปะ event ลงในแต่ละวัน)
+- ค่าเริ่มต้นเป็น **ปฏิทิน** และรวมตัวสลับมุมมอง สรุปจำนวนงานของเดือน และสถานที่พยากรณ์อากาศไว้ใน `PlannerControlBar` เดียว เพื่อลดการไล่อ่านหลายส่วน
 - รายเดือน: หัวกลุ่มเป็นวันที่แบบไทย + จำนวนงาน เรียงวันเก่า→ใหม่ (ในวันเรียงตามเวลา งานไม่ระบุเวลาไปท้าย) · วันนี้เน้น `text-primary font-semibold` + ป้าย 'วันนี้' · กดหัวกลุ่มเลือกวันนั้นบนปฏิทินด้วย · แสดง 10 วันแรกก่อนแล้วกด 'แสดงเพิ่ม'
 - ปฏิทิน: desktop แสดงเวลา + ชื่องานในช่องวัน กด event เพื่อแก้ไข · แสดงไม่เกิน 3 event แล้วรวมส่วนเกินเป็น “+ อีก n งาน” · mobile แสดงจำนวน/แถบสถานะแบบกระชับและใช้แผงรายวันใต้ปฏิทินอ่านรายละเอียด
 - ปฏิทินมีปุ่มเดือนก่อนหน้า/ถัดไป/วันนี้ วันที่เลือกใช้ `ring-primary` และวันนี้ใช้พื้น `bg-primary`
@@ -638,9 +648,11 @@ API ที่ตรวจสอบแล้วว่าใช้งานได�
 | ทองคำไทย | `https://api.chnwt.dev/thai-gold-api/latest` | `response.price.gold` (รูปพรรณ) และ `.gold_bar` (ทองแท่ง) แต่ละอันมี `buy`/`sell` เป็น **string มีคอมมา** ต้องแปลงเป็นตัวเลขเอง |
 | น้ำมัน | `https://api.chnwt.dev/thai-oil-api/latest` | `response.stations.{ptt,bcp,shell,caltex,irpc,pt,susco,pure,susco_dealers}` แต่ละปั๊มมีชนิดน้ำมันเป็น object `{ name, price }` — **ปั๊มบางเจ้าไม่มีน้ำมันบางชนิด ต้องกัน undefined** |
 | อัตราแลกเปลี่ยน | `https://api.frankfurter.app/latest?from=THB` | ข้อมูล ECB **ไม่อัปเดตวันหยุด** ต้องแสดงวันที่ของข้อมูลให้ผู้ใช้เห็นเสมอ |
+| หุ้นสหรัฐฯ | `https://financialmodelingprep.com/stable/batch-quote` | ใช้ `FMP_API_KEY` ฝั่งเซิร์ฟเวอร์ เรียกหุ้นหลักหลายตัวแบบ batch และแจ้งผู้ใช้เสมอว่าข้อมูลอาจล่าช้าตามแผนผู้ให้บริการ |
 
-เรียกผ่าน Route Handler ฝั่งเซิร์ฟเวอร์ (`/api/market/gold`, `/api/market/oil`, `/api/market/currency`) cache ~30 นาที · error เป็นข้อความไทย
+เรียกผ่าน Route Handler ฝั่งเซิร์ฟเวอร์ (`/api/market/gold`, `/api/market/oil`, `/api/market/currency`, `/api/market/stocks`) cache ทอง/น้ำมัน/ค่าเงิน ~30 นาที หุ้น ~15 นาที · error เป็นข้อความไทย
 **แปลงค่าเงิน**: ใช้ `https://api.frankfurter.app/latest?from={FROM}&to={TO}` — validate รหัสสกุลเงินเป็น A-Z 3 ตัวก่อนยิงเสมอ
+**API key หุ้น**: ใช้ชื่อ `FMP_API_KEY` เท่านั้น ห้ามขึ้นต้นด้วย `NEXT_PUBLIC_` เพราะ key ต้องไม่ถูกฝังใน browser bundle
 
 ## 4. ส่งออกข้อมูล (Export) — `/export`
 ส่งออกเป็น **CSV ที่เปิดใน Excel ภาษาไทยไม่เพี้ยน** — ต้องใส่ **UTF-8 BOM (`﻿`) นำหน้าไฟล์เสมอ** ไม่งั้น Excel อ่านภาษาไทยเป็นตัวยึกยือ

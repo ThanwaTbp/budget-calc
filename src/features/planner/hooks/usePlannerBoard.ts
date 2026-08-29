@@ -106,7 +106,7 @@ export function usePlannerBoard() {
     return new Date(today.getFullYear(), today.getMonth(), 1)
   })
   const [statusFilter, setStatusFilter] = useState<PlannerStatusFilter>('all')
-  const [viewMode, setViewMode] = useState<PlannerViewMode>('day')
+  const [viewMode, setViewMode] = useState<PlannerViewMode>('calendar')
 
   const tasksByDate = useMemo(() => buildTasksByDate(tasks), [tasks])
   const dayIndicators = useMemo(() => buildDayIndicators(tasks), [tasks])

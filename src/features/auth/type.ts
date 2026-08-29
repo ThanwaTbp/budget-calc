@@ -29,3 +29,12 @@ export interface IResetPasswordInput {
   secret: string
   password: string
 }
+
+export interface IUpdateNameInput {
+  name: string
+}
+
+export interface IUpdatePasswordInput {
+  currentPassword: string
+  newPassword: string
+}

@@ -1,6 +1,13 @@
 import { AppwriteException, ID, type Models } from 'appwrite'
 import { appwriteAccount, isAppwriteConfigured } from '@/lib/appwrite'
-import type { IAuthUser, ILoginInput, IRegisterInput, IResetPasswordInput } from '@/features/auth/type'
+import type {
+  IAuthUser,
+  ILoginInput,
+  IRegisterInput,
+  IResetPasswordInput,
+  IUpdateNameInput,
+  IUpdatePasswordInput,
+} from '@/features/auth/type'
 
 // ข้อความ error ของ Appwrite แปลเป็นภาษาไทย แมปตาม `type` ที่ AppwriteException ส่งมา
 // รายการที่แปลไม่ได้ (รวมถึง error ที่ไม่ใช่ AppwriteException) จะ fallback เป็นข้อความกลางๆ เสมอ ห้ามโชว์ error ดิบภาษาอังกฤษ
@@ -28,6 +35,14 @@ export function toThaiAuthErrorMessage(error: unknown): string {
   }
 
   return FALLBACK_AUTH_ERROR_MESSAGE
+}
+
+export function toThaiPasswordUpdateErrorMessage(error: unknown): string {
+  if (error instanceof AppwriteException && error.type === 'user_invalid_credentials') {
+    return 'รหัสผ่านปัจจุบันไม่ถูกต้อง'
+  }
+
+  return toThaiAuthErrorMessage(error)
 }
 
 function ensureAppwriteConfigured(): void {
@@ -74,6 +89,17 @@ export async function loginWithEmailPassword(input: ILoginInput): Promise<IAuthU
 export async function logoutCurrentSession(): Promise<void> {
   ensureAppwriteConfigured()
   await appwriteAccount.deleteSession({ sessionId: 'current' })
+}
+
+export async function updateCurrentUserName(input: IUpdateNameInput): Promise<IAuthUser> {
+  ensureAppwriteConfigured()
+  const user = await appwriteAccount.updateName({ name: input.name.trim() })
+  return mapAppwriteUserToAuthUser(user)
+}
+
+export async function updateCurrentUserPassword(input: IUpdatePasswordInput): Promise<void> {
+  ensureAppwriteConfigured()
+  await appwriteAccount.updatePassword({ password: input.newPassword, oldPassword: input.currentPassword })
 }
 
 // ขอลิงก์รีเซ็ตรหัสผ่าน — Appwrite ส่งอีเมลให้เอง โดยลิงก์จะพากลับมาที่ url พร้อม query userId/secret
