@@ -1,6 +1,6 @@
 'use client'
 
-import { Ticket, Trash2 } from 'lucide-react'
+import { CheckCircle2, Coins, Ticket, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -37,19 +37,34 @@ export function SavedTicketList({ tickets, checkedTickets, totalReward }: ISaved
 
   if (tickets.length === 0) {
     return (
-      <EmptyState
-        icon={Ticket}
-        title="ยังไม่มีเลขที่บันทึกไว้"
-        description="กรอกเลขในช่องตรวจเลขด้านบนแล้วกดบันทึกเพื่อเก็บไว้ตรวจกับงวดถัดไปได้ทันที"
-      />
+      <section className="flex min-h-72 items-center justify-center rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <EmptyState
+          icon={Ticket}
+          title="ยังไม่มีเลขที่บันทึกไว้"
+          description="กรอกเลขด้านบนแล้วกดบันทึก ระบบจะตรวจให้ใหม่ทุกครั้งที่เปลี่ยนงวด"
+        />
+      </section>
     )
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm font-medium text-muted-foreground">เลขที่บันทึกไว้ ({tickets.length})</p>
+    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-secondary/55 px-4 py-4">
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <Ticket className="size-5" />
+          </span>
+          <div>
+            <h2 className="font-semibold tracking-tight">เลขที่บันทึกไว้</h2>
+            <p className="text-xs text-muted-foreground">ตรวจพร้อมกันกับงวดที่เลือก</p>
+          </div>
+        </div>
+        <Badge variant="secondary" className="rounded-full px-2.5">
+          {tickets.length} เลข
+        </Badge>
+      </div>
 
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-2 p-3">
         {tickets.map((ticket, index) => {
           const checkedResult = checkedTickets[index]
           const isWinning = (checkedResult?.hits.length ?? 0) > 0
@@ -57,14 +72,26 @@ export function SavedTicketList({ tickets, checkedTickets, totalReward }: ISaved
           return (
             <li
               key={ticket.id}
-              className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
+              className={cn(
+                'relative flex items-start justify-between gap-3 overflow-hidden rounded-xl border p-3.5',
+                isWinning ? 'border-income/35 bg-income-muted/75' : 'border-border bg-secondary/30',
+              )}
             >
+              <span
+                className={cn(
+                  'absolute inset-y-0 left-0 w-1',
+                  isWinning ? 'bg-income' : 'bg-muted-foreground/20',
+                )}
+              />
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <span
-                  className={cn('tabular text-lg font-bold tracking-[0.15em]', isWinning && 'text-income')}
-                >
-                  {ticket.number}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn('tabular text-xl font-bold tracking-[0.15em]', isWinning && 'text-income')}
+                  >
+                    {ticket.number}
+                  </span>
+                  {isWinning && <CheckCircle2 className="size-4 shrink-0 text-income" />}
+                </div>
                 {ticket.note && <span className="truncate text-sm text-muted-foreground">{ticket.note}</span>}
 
                 {isWinning && checkedResult ? (
@@ -80,7 +107,7 @@ export function SavedTicketList({ tickets, checkedTickets, totalReward }: ISaved
                     ))}
                   </div>
                 ) : (
-                  <span className="text-sm text-muted-foreground">ไม่ถูกรางวัล</span>
+                  <span className="text-xs text-muted-foreground">ยังไม่ถูกรางวัลในงวดนี้</span>
                 )}
               </div>
 
@@ -99,16 +126,21 @@ export function SavedTicketList({ tickets, checkedTickets, totalReward }: ISaved
         })}
       </ul>
 
-      <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-3">
-        <span className="text-sm font-medium">รวมเงินรางวัลงวดนี้</span>
-        <span
-          className={
-            totalReward > 0 ? 'tabular text-lg font-bold text-income' : 'tabular text-sm text-muted-foreground'
-          }
-        >
-          {formatCurrency(totalReward)}
-        </span>
+      <div className="border-t border-border p-3">
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-accent/55 p-3.5">
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <Coins className="size-4 text-primary" />
+            รวมเงินรางวัลงวดนี้
+          </span>
+          <span
+            className={
+              totalReward > 0 ? 'tabular text-lg font-bold text-income' : 'tabular text-sm text-muted-foreground'
+            }
+          >
+            {formatCurrency(totalReward)}
+          </span>
+        </div>
       </div>
-    </div>
+    </section>
   )
 }

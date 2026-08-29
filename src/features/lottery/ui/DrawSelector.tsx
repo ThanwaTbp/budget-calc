@@ -24,7 +24,7 @@ export function DrawSelector({ draws, selectedDrawId, isLoading, onSelectDraw }:
       onValueChange={onSelectDraw}
       disabled={isLoading || draws.length === 0}
     >
-      <SelectTrigger className="w-full sm:w-60" aria-label="เลือกงวดหวย">
+      <SelectTrigger className="h-11 w-full rounded-xl bg-card shadow-sm sm:w-64" aria-label="เลือกงวดหวย">
         <span className="flex items-center gap-1.5">
           <CalendarDays className="size-4 text-muted-foreground" />
           <SelectValue placeholder={isLoading ? 'กำลังโหลดงวด...' : 'เลือกงวด'} />
@@ -36,7 +36,7 @@ export function DrawSelector({ draws, selectedDrawId, isLoading, onSelectDraw }:
             <span className="flex items-center gap-2">
               {drawItem.label}
               {drawItem.id === latestDrawId && (
-                <Badge variant="secondary" className="text-[0.65rem]">
+                <Badge variant="secondary" className="rounded-full text-[0.65rem]">
                   ล่าสุด
                 </Badge>
               )}

@@ -1,5 +1,6 @@
 'use client'
 
+import { ShieldCheck } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/common/PageHeader'
 import { useHydrated } from '@/hooks/useHydrated'
@@ -45,7 +46,7 @@ export function LotteryPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="ตรวจหวย" description="ตรวจผลสลากกินแบ่งรัฐบาล งวดล่าสุดและย้อนหลัง">
+      <PageHeader title="ตรวจหวย" description="กรอกเลขครั้งเดียว แล้วตรวจผลพร้อมเลขที่บันทึกไว้อย่างเป็นระเบียบ">
         <DrawSelector
           draws={draws}
           selectedDrawId={selectedDrawId}
@@ -63,8 +64,8 @@ export function LotteryPage() {
         onSaveQuickNumber={onSaveQuickNumber}
       />
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <div className="xl:col-span-2">
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(19rem,0.7fr)]">
+        <div>
           <DrawResultPanel
             draw={draw}
             isLoading={isLoadingDraws || isLoadingDraw}
@@ -74,14 +75,15 @@ export function LotteryPage() {
           />
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm xl:col-span-1">
+        <div className="xl:sticky xl:top-20">
           <SavedTicketList tickets={tickets} checkedTickets={checkedTickets} totalReward={totalReward} />
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        ข้อมูลจาก lottery.co.th — โปรดตรวจสอบกับผลรางวัลอย่างเป็นทางการอีกครั้งก่อนขึ้นเงิน
-      </p>
+      <div className="flex items-start gap-2 rounded-xl border border-border bg-secondary/35 px-4 py-3 text-xs text-muted-foreground">
+        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+        <p>ข้อมูลจาก lottery.co.th โปรดตรวจสอบกับผลรางวัลอย่างเป็นทางการอีกครั้งก่อนขึ้นเงิน</p>
+      </div>
     </div>
   )
 }

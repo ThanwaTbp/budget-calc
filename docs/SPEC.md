@@ -130,7 +130,8 @@ const onDelete = async () => {
 ใช้ผ่าน Tailwind class: `bg-background` `bg-card` `text-foreground` `text-muted-foreground` `border-border` `bg-primary` `text-primary` `bg-accent` `text-accent-foreground` `bg-sidebar`
 semantic การเงิน: `text-income`/`bg-income`/`bg-income-muted` · `text-expense`/`bg-expense`/`bg-expense-muted` · `text-warning`/`bg-warning`/`bg-warning-muted`
 กราฟ: `var(--color-chart-1)` ถึง `var(--color-chart-5)`
-**ห้าม hardcode hex/rgb เด็ดขาด** — แอปมี 4 ชุดสีให้ผู้ใช้สลับ + light/dark ต้องเปลี่ยนตามทั้งหมด
+**ห้าม hardcode hex/rgb เด็ดขาด** — แอปมี 2 ชุดสี (Indigo และ Blue) ให้ผู้ใช้สลับ + light/dark ต้องเปลี่ยนตามทั้งหมด โดยพื้นโหมดสว่างใช้ neutral โทนอุ่นเพื่อลดแสงจ้า
+ผู้ใช้เลือกขนาดตัวอักษรได้ 3 ระดับ `sm` (14px), `md` (16px, ค่าเริ่มต้น) และ `lg` (18px) ระบบบันทึกค่าในเบราว์เซอร์และแปะ `data-font-size` บน `<html>` ก่อน render เพื่อไม่ให้ขนาดตัวอักษรกระพริบตอนเปิดหน้า
 ตัวเลขเงินใส่ class `tabular` เสมอ
 
 ## แนวทาง UI — SaaS Minimal Modern
@@ -204,7 +205,7 @@ await usePayrollStore.persist.rehydrate()
 | `/` `/transactions` `/payroll` | ต้องล็อกอินก่อน ถ้ายังไม่ล็อกอินให้เด้งไป `/login` |
 
 ## โครงเมนูหลัก
-- **การเงิน**: ภาพรวม · รายรับ-รายจ่าย · งบประมาณ · รายการประจำ · ค่าจ้างพนักงาน
+- **การเงิน**: รายรับ-รายจ่าย · งบประมาณ · รายการประจำ · ค่าจ้างพนักงาน
 - **งานและเครื่องมือ**: วางแผนงาน · ราคาตลาด · สภาพอากาศ · ตรวจหวย
 - **ข้อมูล**: ส่งออกข้อมูล
 - **ระบบ**: สถานะระบบ · ตั้งค่า — กลุ่มนี้ยึดด้านล่างของ sidebar และ **ตั้งค่าต้องอยู่ลำดับสุดท้ายเสมอ**
@@ -293,7 +294,7 @@ type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline' | 'disable
 # ฟีเจอร์วางแผนงาน (Planner) — เพิ่มใน v5, ปรับ UX ใน v6
 
 ## เลือกใช้ `react-day-picker@10` (มีอยู่แล้วในโปรเจค เป็นฐานของ shadcn Calendar)
-เหตุผล: แอปมี **4 ชุดสีให้ผู้ใช้สลับ + light/dark** ถ้าใช้ FullCalendar / react-big-calendar / Schedule-X จะต้องสู้กับ CSS ของ lib เองตลอด
+เหตุผล: แอปมี **2 ชุดสีให้ผู้ใช้สลับ + light/dark** ถ้าใช้ FullCalendar / react-big-calendar / Schedule-X จะต้องสู้กับ CSS ของ lib เองตลอด
 react-day-picker override `components.Day` / `DayButton` ได้ จึงวาดตัวบ่งชี้งานในช่องวันที่ด้วย Tailwind token ของเราเองได้ 100% และไม่เพิ่ม dependency ใหม่
 
 ## Data model (`src/types/planner.ts`)

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, CloudAlert } from 'lucide-react'
+import { Award, ChevronRight, CloudAlert, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -55,10 +55,10 @@ interface IDrawResultPanel {
 export function DrawResultPanel({ draw, isLoading, errorMessage, checkedTickets, onRetry }: IDrawResultPanel) {
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
-        <Skeleton className="h-5 w-40" />
-        <Skeleton className="h-36 w-full rounded-xl" />
-        <div className="grid gap-3 sm:grid-cols-3">
+      <div className="flex flex-col gap-5 overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <Skeleton className="h-10 w-52 rounded-xl" />
+        <Skeleton className="h-52 w-full rounded-2xl" />
+        <div className="grid gap-3 md:grid-cols-3">
           <Skeleton className="h-24 w-full rounded-lg" />
           <Skeleton className="h-24 w-full rounded-lg" />
           <Skeleton className="h-24 w-full rounded-lg" />
@@ -74,7 +74,7 @@ export function DrawResultPanel({ draw, isLoading, errorMessage, checkedTickets,
 
   if (!draw) {
     return (
-      <div className="flex items-center justify-center rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="flex min-h-96 items-center justify-center rounded-2xl border border-border bg-card p-6 shadow-sm">
         <EmptyState
           icon={CloudAlert}
           title="ดึงผลรางวัลไม่สำเร็จ"
@@ -90,46 +90,69 @@ export function DrawResultPanel({ draw, isLoading, errorMessage, checkedTickets,
   const { firstPrize, quickPrizes, collapsiblePrizes } = splitPrizesForBoard(draw.prizes)
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
-      <p className="font-semibold tracking-tight">ผลรางวัลงวด {draw.label}</p>
+    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-secondary/55 px-5 py-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <Award className="size-5" />
+          </span>
+          <div>
+            <p className="font-semibold tracking-tight">ผลรางวัลอย่างเป็นทางการ</p>
+            <p className="text-sm text-muted-foreground">งวด {draw.label}</p>
+          </div>
+        </div>
+        <span className="hidden rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground sm:inline-flex">
+          แตะรางวัลด้านล่างเพื่อดูเลขทั้งหมด
+        </span>
+      </div>
 
-      {firstPrize && (
-        <div className="rounded-xl border-2 border-dashed border-primary/40 bg-card p-6 text-center">
-          <p className="text-sm font-medium text-muted-foreground">{firstPrize.name}</p>
-          <div className="mt-2 flex flex-col items-center gap-1">
-            {firstPrize.numbers.map((number) => (
-              <span
-                key={number}
-                className={cn(
-                  'tabular rounded-lg px-3 py-1 text-4xl font-bold tracking-[0.15em] text-foreground sm:text-5xl',
-                  wonNumberKeys.has(`${firstPrize.id}:${number}`) &&
-                    'bg-income-muted text-income ring-1 ring-income/40',
-                )}
-              >
-                {number}
-              </span>
+      <div className="flex flex-col gap-5 p-4 sm:p-6">
+        {firstPrize && (
+          <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-accent/55 px-4 py-7 text-center sm:px-6 sm:py-9">
+            <div className="absolute top-1/2 -left-3 size-6 -translate-y-1/2 rounded-full border border-border bg-card" />
+            <div className="absolute top-1/2 -right-3 size-6 -translate-y-1/2 rounded-full border border-border bg-card" />
+            <p className="flex items-center justify-center gap-2 text-sm font-semibold text-accent-foreground">
+              <Crown className="size-4" />
+              {firstPrize.name}
+            </p>
+            <div className="mt-3 flex flex-col items-center gap-1">
+              {firstPrize.numbers.map((number) => (
+                <span
+                  key={number}
+                  className={cn(
+                    'tabular rounded-xl px-3 py-1 text-4xl font-bold tracking-[0.12em] text-foreground sm:text-6xl',
+                    wonNumberKeys.has(`${firstPrize.id}:${number}`) &&
+                      'bg-income-muted text-income ring-1 ring-income/40',
+                  )}
+                >
+                  {number}
+                </span>
+              ))}
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">เงินรางวัลต่อฉบับ</p>
+            <p className="tabular mt-0.5 text-xl font-semibold text-primary">
+              {formatCurrency(firstPrize.reward)}
+            </p>
+          </div>
+        )}
+
+        {quickPrizes.length > 0 && (
+          <div className="grid gap-3 md:grid-cols-3">
+            {quickPrizes.map((prize) => (
+              <QuickPrizeCard key={prize.id} prize={prize} wonNumberKeys={wonNumberKeys} />
             ))}
           </div>
-          <p className="mt-2 text-base font-semibold text-primary">{formatCurrency(firstPrize.reward)}</p>
-        </div>
-      )}
+        )}
 
-      {quickPrizes.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-3">
-          {quickPrizes.map((prize) => (
-            <QuickPrizeCard key={prize.id} prize={prize} wonNumberKeys={wonNumberKeys} />
-          ))}
-        </div>
-      )}
-
-      {collapsiblePrizes.length > 0 && (
-        <div className="flex flex-col divide-y divide-border border-t border-border">
-          {collapsiblePrizes.map((prize) => (
-            <CollapsiblePrizeBlock key={prize.id} prize={prize} wonNumberKeys={wonNumberKeys} />
-          ))}
-        </div>
-      )}
-    </div>
+        {collapsiblePrizes.length > 0 && (
+          <div className="flex flex-col divide-y divide-border rounded-xl border border-border px-4">
+            {collapsiblePrizes.map((prize) => (
+              <CollapsiblePrizeBlock key={prize.id} prize={prize} wonNumberKeys={wonNumberKeys} />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -141,14 +164,14 @@ interface IPrizeBlock {
 // การ์ดเล็กสำหรับ 3 รางวัลที่คนตรวจบ่อยที่สุด (เลขหน้า 3 ตัว / เลขท้าย 3 ตัว / เลขท้าย 2 ตัว)
 function QuickPrizeCard({ prize, wonNumberKeys }: IPrizeBlock) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-muted/30 p-4 text-center">
-      <p className="text-sm font-medium">{prize.name}</p>
+    <article className="flex min-h-36 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-secondary/45 p-4 text-center transition-colors hover:border-primary/30 hover:bg-accent/45">
+      <p className="text-sm font-semibold">{prize.name}</p>
       <div className="flex flex-wrap items-center justify-center gap-3">
         {prize.numbers.map((number) => (
           <span
             key={number}
             className={cn(
-              'tabular rounded-md px-2 py-1 text-2xl font-bold tracking-widest',
+              'tabular rounded-lg px-2 py-1 text-2xl font-bold tracking-widest sm:text-3xl',
               wonNumberKeys.has(`${prize.id}:${number}`) && 'bg-income-muted text-income ring-1 ring-income/40',
             )}
           >
@@ -156,8 +179,8 @@ function QuickPrizeCard({ prize, wonNumberKeys }: IPrizeBlock) {
           </span>
         ))}
       </div>
-      <p className="text-xs text-muted-foreground">{formatCurrency(prize.reward)}</p>
-    </div>
+      <p className="text-xs text-muted-foreground">รางวัลละ {formatCurrency(prize.reward)}</p>
+    </article>
   )
 }
 
@@ -172,10 +195,10 @@ function CollapsiblePrizeBlock({ prize, wonNumberKeys }: IPrizeBlock) {
       <button
         type="button"
         onClick={onToggleExpand}
-        className="flex min-h-12 items-center justify-between gap-3 text-left"
+        className="flex min-h-14 items-center justify-between gap-3 rounded-lg px-1 text-left transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         aria-expanded={isExpanded}
       >
-        <span className="text-sm font-medium">
+        <span className="text-sm font-semibold">
           {prize.name} <span className="text-muted-foreground">({prize.numbers.length} เลข)</span>
         </span>
         <span className="flex items-center gap-2">
@@ -187,12 +210,12 @@ function CollapsiblePrizeBlock({ prize, wonNumberKeys }: IPrizeBlock) {
       </button>
 
       {isExpanded && (
-        <div className="grid grid-cols-3 gap-2 pb-3 sm:grid-cols-5">
+        <div className="grid grid-cols-3 gap-2 pb-4 sm:grid-cols-5">
           {prize.numbers.map((number) => (
             <span
               key={number}
               className={cn(
-                'tabular rounded-md bg-muted px-2 py-1.5 text-center text-sm',
+                'tabular rounded-lg bg-muted px-2 py-2 text-center text-sm font-medium',
                 wonNumberKeys.has(`${prize.id}:${number}`) &&
                   'bg-income-muted font-semibold text-income ring-1 ring-income/40',
               )}

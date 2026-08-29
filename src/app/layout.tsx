@@ -6,6 +6,7 @@ import { ConfirmProvider } from '@/components/common/ConfirmProvider'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/features/auth/ui/AuthProvider'
 import { DEFAULT_PALETTE, PALETTE_IDS, PALETTE_STORAGE_KEY } from '@/constants/palettes'
+import { DEFAULT_FONT_SIZE, FONT_SIZE_IDS, FONT_SIZE_STORAGE_KEY } from '@/constants/fontSizes'
 import './globals.css'
 
 const baiJamjuree = Bai_Jamjuree({
@@ -26,22 +27,36 @@ export const metadata: Metadata = {
   description: 'คำนวณรายรับรายจ่าย ค่าจ้างพนักงาน วางแผนงาน และตรวจหวย ในที่เดียว',
 }
 
-// สคริปต์นี้ต้องรันก่อนเบราว์เซอร์วาดหน้าจอ เพื่อแปะ data-palette จากค่าที่บันทึกไว้
-// ถ้ารอให้ React hydrate ก่อน ผู้ใช้จะเห็นชุดสีเริ่มต้นแวบขึ้นมาก่อนสลับเป็นสีจริง (FOUC)
-const paletteBootstrapScript = `
+// สคริปต์นี้ต้องรันก่อนเบราว์เซอร์วาดหน้าจอ เพื่อแปะชุดสีและขนาดตัวอักษรจากค่าที่บันทึกไว้
+// ถ้ารอให้ React hydrate ก่อน ผู้ใช้จะเห็นค่าเริ่มต้นแวบขึ้นมาก่อนสลับเป็นค่าจริง (FOUC)
+const appearanceBootstrapScript = `
 (function () {
   try {
-    var stored = window.localStorage.getItem('${PALETTE_STORAGE_KEY}')
-    var allowed = ${JSON.stringify(PALETTE_IDS)}
-    var palette = '${DEFAULT_PALETTE}'
-    if (stored) {
-      var parsed = JSON.parse(stored)
-      var candidate = parsed && parsed.state && parsed.state.palette
-      if (allowed.indexOf(candidate) !== -1) palette = candidate
+    const storedPalette = window.localStorage.getItem('${PALETTE_STORAGE_KEY}')
+    const allowedPalettes = ${JSON.stringify(PALETTE_IDS)}
+    let palette = '${DEFAULT_PALETTE}'
+    if (storedPalette) {
+      const parsedPalette = JSON.parse(storedPalette)
+      const paletteCandidate = parsedPalette && parsedPalette.state && parsedPalette.state.palette
+      if (allowedPalettes.indexOf(paletteCandidate) !== -1) palette = paletteCandidate
     }
     document.documentElement.dataset.palette = palette
   } catch (err) {
     document.documentElement.dataset.palette = '${DEFAULT_PALETTE}'
+  }
+
+  try {
+    const storedFontSize = window.localStorage.getItem('${FONT_SIZE_STORAGE_KEY}')
+    const allowedFontSizes = ${JSON.stringify(FONT_SIZE_IDS)}
+    let fontSize = '${DEFAULT_FONT_SIZE}'
+    if (storedFontSize) {
+      const parsedFontSize = JSON.parse(storedFontSize)
+      const fontSizeCandidate = parsedFontSize && parsedFontSize.state && parsedFontSize.state.fontSize
+      if (allowedFontSizes.indexOf(fontSizeCandidate) !== -1) fontSize = fontSizeCandidate
+    }
+    document.documentElement.dataset.fontSize = fontSize
+  } catch (err) {
+    document.documentElement.dataset.fontSize = '${DEFAULT_FONT_SIZE}'
   }
 })()
 `
@@ -52,10 +67,11 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       lang="th"
       suppressHydrationWarning
       data-palette={DEFAULT_PALETTE}
+      data-font-size={DEFAULT_FONT_SIZE}
       className={`${baiJamjuree.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: paletteBootstrapScript }} />
+        <script dangerouslySetInnerHTML={{ __html: appearanceBootstrapScript }} />
       </head>
       <body className="flex min-h-full flex-col">
         <ThemeProvider>

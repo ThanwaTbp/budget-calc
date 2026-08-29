@@ -9,7 +9,9 @@ import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { useHydrated } from '@/hooks/useHydrated'
 import { usePaletteStore } from '@/stores/usePaletteStore'
+import { useFontSizeStore } from '@/stores/useFontSizeStore'
 import { PALETTE_OPTIONS, type PaletteId } from '@/constants/palettes'
+import { FONT_SIZE_OPTIONS, type FontSizeId } from '@/constants/fontSizes'
 
 interface IThemeModeOption {
   value: string
@@ -29,11 +31,17 @@ export function ThemePanel() {
   const { theme, setTheme } = useTheme()
   const palette = usePaletteStore((state) => state.palette)
   const onSelectPalette = usePaletteStore((state) => state.onSelectPalette)
+  const fontSize = useFontSizeStore((state) => state.fontSize)
+  const onSelectFontSize = useFontSizeStore((state) => state.onSelectFontSize)
 
   const activeMode = hasHydrated ? (theme ?? 'system') : 'system'
 
   const onChangePalette = (nextPalette: PaletteId) => {
     onSelectPalette(nextPalette)
+  }
+
+  const onChangeFontSize = (nextFontSize: FontSizeId) => {
+    onSelectFontSize(nextFontSize)
   }
 
   return (
@@ -74,6 +82,40 @@ export function ThemePanel() {
                   >
                     <modeOption.icon className="size-4" />
                     {modeOption.label}
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          <Separator />
+
+          <section className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-sm font-medium">ขนาดตัวอักษร</h3>
+              <p className="text-xs text-muted-foreground">ปรับความหนาแน่นและความสบายตาของข้อความทั้งแอป</p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2" role="group" aria-label="เลือกขนาดตัวอักษร">
+              {FONT_SIZE_OPTIONS.map((fontSizeOption) => {
+                const isActive = hasHydrated && fontSize === fontSizeOption.id
+
+                return (
+                  <button
+                    key={fontSizeOption.id}
+                    type="button"
+                    onClick={() => onChangeFontSize(fontSizeOption.id)}
+                    aria-pressed={isActive}
+                    className={cn(
+                      'flex min-h-20 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 transition-colors',
+                      isActive
+                        ? 'border-primary bg-accent text-accent-foreground'
+                        : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    <span className={cn('font-semibold leading-none', fontSizeOption.previewClassName)}>Aa</span>
+                    <span className="text-xs font-medium">{fontSizeOption.description}</span>
+                    <span className="text-[0.6875rem]">{fontSizeOption.label}</span>
                   </button>
                 )
               })}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { REGEXP_ONLY_DIGITS } from 'input-otp'
-import { CalendarDays, Check, PartyPopper, SearchX } from 'lucide-react'
+import { CalendarDays, Check, PartyPopper, ScanLine, SearchX, ShieldCheck, Ticket } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
@@ -19,7 +19,7 @@ interface ITicketCheckCard {
   onSaveQuickNumber: () => void
 }
 
-// HERO ของหน้า — ช่องกรอกเลข 6 หลักทีละกล่อง กรอกครบแล้วตรวจให้อัตโนมัติทันที (ยังมีปุ่มไว้กดซ้ำได้)
+// HERO ของหน้า — วางองค์ประกอบเหมือนใบสลาก: หัวงวด, เลข 6 หลัก และผลตรวจในพื้นที่เดียวกัน
 export function TicketCheckCard({
   drawLabel,
   quickCheckResult,
@@ -54,105 +54,141 @@ export function TicketCheckCard({
   }
 
   return (
-    <div className="flex flex-col items-center gap-5 rounded-xl border border-primary/15 bg-card p-6 shadow-sm ring-1 ring-primary/15 sm:p-8">
-      {drawLabel && (
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <CalendarDays className="size-4" />
-          งวดวันที่ {drawLabel}
-        </p>
-      )}
+    <section className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm">
+      <div className="flex flex-col gap-4 border-b border-dashed border-primary/25 bg-accent/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+        <div className="flex items-center gap-3">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+            <Ticket className="size-5" />
+          </span>
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">ตรวจเลขสลากของคุณ</h2>
+            <p className="text-sm text-muted-foreground">กรอกครบ 6 หลัก แล้วรู้ผลทันที</p>
+          </div>
+        </div>
 
-      <InputOTP
-        maxLength={6}
-        pattern={REGEXP_ONLY_DIGITS}
-        value={inputValue}
-        onChange={onOtpChange}
-        disabled={!isDrawLoaded}
-        containerClassName="justify-center"
-      >
-        <InputOTPGroup>
-          {Array.from({ length: 6 }).map((_, slotIndex) => (
-            <InputOTPSlot key={slotIndex} index={slotIndex} className="size-12 text-2xl font-semibold tabular sm:size-14 sm:text-2xl" />
-          ))}
-        </InputOTPGroup>
-      </InputOTP>
-
-      <div className="flex items-center gap-3">
-        <Button size="lg" onClick={onCheckClick} disabled={!isDrawLoaded || !isComplete}>
-          ตรวจรางวัล
-        </Button>
-        {inputValue.length > 0 && (
-          <Button variant="ghost" onClick={onClear}>
-            ล้าง
-          </Button>
+        {drawLabel && (
+          <p className="flex h-9 w-fit items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-medium shadow-sm">
+            <CalendarDays className="size-4 text-primary" />
+            งวด {drawLabel}
+          </p>
         )}
       </div>
 
-      {!isComplete && <p className="text-sm text-muted-foreground">กรอกให้ครบ 6 หลัก</p>}
+      <div className="grid items-center gap-6 px-5 py-7 sm:px-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-10 lg:px-10 lg:py-9">
+        <div className="flex min-w-0 flex-col items-center gap-4 lg:items-start">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <ScanLine className="size-4 text-primary" />
+            เลขสลาก 6 หลัก
+          </div>
 
-      {hasCheckedResult && quickCheckResult && (
-        <div
-          className={cn(
-            'w-full max-w-xl rounded-xl border p-5',
-            hasWinningResult ? 'border-income/40 bg-income-muted' : 'border-border bg-muted/40',
-          )}
-        >
-          {hasWinningResult ? (
-            <>
-              <div className="flex items-center gap-2 font-semibold text-income">
-                <PartyPopper className="size-5" />
-                ยินดีด้วย! ถูกรางวัล
-              </div>
+          <InputOTP
+            maxLength={6}
+            pattern={REGEXP_ONLY_DIGITS}
+            value={inputValue}
+            onChange={onOtpChange}
+            disabled={!isDrawLoaded}
+            containerClassName="w-full justify-center lg:justify-start"
+          >
+            <InputOTPGroup className="gap-1.5 sm:gap-2">
+              {Array.from({ length: 6 }).map((_, slotIndex) => (
+                <InputOTPSlot
+                  key={slotIndex}
+                  index={slotIndex}
+                  className="tabular size-11 rounded-xl border bg-background text-xl font-bold shadow-xs first:rounded-xl first:border last:rounded-xl sm:size-14 sm:text-2xl"
+                />
+              ))}
+            </InputOTPGroup>
+          </InputOTP>
 
-              <ul className="mt-3 flex flex-col gap-2">
-                {quickCheckResult.hits.map((hit) => (
-                  <li
-                    key={`${hit.prizeId}-${hit.matchedNumber}`}
-                    className="flex items-center justify-between gap-3 text-sm"
-                  >
-                    <span>{hit.prizeName}</span>
-                    <span className="tabular font-medium">{formatCurrency(hit.reward)}</span>
-                  </li>
-                ))}
-              </ul>
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <ShieldCheck className="size-3.5 text-income" />
+            ตรวจจากผลรางวัลของงวดที่เลือก
+          </p>
+        </div>
 
-              <div className="mt-3 flex items-center justify-between gap-3 border-t border-income/30 pt-3">
-                <span className="text-sm font-medium">รวมทั้งสิ้น</span>
-                <span className="tabular text-3xl font-bold text-income">
-                  {formatCurrency(quickCheckResult.totalReward)}
-                </span>
-              </div>
-
-              {isQuickNumberSaved ? (
-                <p className="mt-3 flex items-center gap-1.5 text-sm text-income">
-                  <Check className="size-4" />
-                  บันทึกไว้แล้ว
-                </p>
-              ) : (
-                <Button variant="outline" size="sm" onClick={onSaveClick} className="mt-3">
-                  บันทึกเลขนี้ไว้
-                </Button>
-              )}
-            </>
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:justify-center lg:w-44 lg:flex-col">
+          <Button size="lg" className="h-12" onClick={onCheckClick} disabled={!isDrawLoaded || !isComplete}>
+            ตรวจรางวัล
+          </Button>
+          {inputValue.length > 0 ? (
+            <Button variant="ghost" className="h-11" onClick={onClear}>
+              ล้างเลข
+            </Button>
           ) : (
-            <div className="flex flex-col items-center gap-2 text-center">
-              <SearchX className="size-6 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">ไม่ถูกรางวัลในงวดนี้</p>
-
-              {isQuickNumberSaved ? (
-                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Check className="size-4" />
-                  บันทึกไว้แล้ว
-                </p>
-              ) : (
-                <Button variant="outline" size="sm" onClick={onSaveClick}>
-                  บันทึกเลขนี้ไว้
-                </Button>
-              )}
-            </div>
+            <p className="py-2 text-center text-sm text-muted-foreground">กรอกให้ครบ 6 หลัก</p>
           )}
         </div>
+      </div>
+
+      {hasCheckedResult && quickCheckResult && (
+        <div className="border-t border-dashed border-border px-5 py-6 sm:px-7 lg:px-10">
+          <div
+            className={cn(
+              'mx-auto max-w-3xl rounded-2xl border p-5 sm:p-6',
+              hasWinningResult ? 'border-income/40 bg-income-muted' : 'border-border bg-muted/45',
+            )}
+          >
+            {hasWinningResult ? (
+              <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <div>
+                  <div className="flex items-center gap-2 text-lg font-semibold text-income">
+                    <PartyPopper className="size-5" />
+                    ยินดีด้วย! ถูกรางวัล
+                  </div>
+
+                  <ul className="mt-3 flex flex-col gap-2">
+                    {quickCheckResult.hits.map((hit) => (
+                      <li key={`${hit.prizeId}-${hit.matchedNumber}`} className="flex items-center gap-2 text-sm">
+                        <Check className="size-4 shrink-0 text-income" />
+                        <span>{hit.prizeName}</span>
+                        <span className="tabular ml-auto font-medium">{formatCurrency(hit.reward)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="sm:text-right">
+                  <p className="text-sm font-medium text-income">รวมเงินรางวัล</p>
+                  <p className="tabular mt-1 text-3xl font-bold tracking-tight text-income">
+                    {formatCurrency(quickCheckResult.totalReward)}
+                  </p>
+                  {isQuickNumberSaved ? (
+                    <p className="mt-2 flex items-center gap-1.5 text-sm text-income sm:justify-end">
+                      <Check className="size-4" />
+                      บันทึกไว้แล้ว
+                    </p>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={onSaveClick} className="mt-3">
+                      บันทึกเลขนี้ไว้
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-3 text-center">
+                <span className="flex size-11 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+                  <SearchX className="size-5" />
+                </span>
+                <div>
+                  <p className="font-medium">ไม่ถูกรางวัลในงวดนี้</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">บันทึกเลขไว้ตรวจงวดถัดไปได้</p>
+                </div>
+
+                {isQuickNumberSaved ? (
+                  <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Check className="size-4" />
+                    บันทึกไว้แล้ว
+                  </p>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={onSaveClick}>
+                    บันทึกเลขนี้ไว้
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       )}
-    </div>
+    </section>
   )
 }

@@ -4,7 +4,6 @@ import {
   CalendarDays,
   CloudSun,
   Download,
-  LayoutDashboard,
   Repeat,
   Settings,
   Ticket,
@@ -34,7 +33,6 @@ export const NAV_GROUPS: INavGroup[] = [
     label: 'การเงิน',
     placement: 'main',
     items: [
-      { href: '/', label: 'ภาพรวม', icon: LayoutDashboard },
       { href: '/transactions', label: 'รายรับ-รายจ่าย', icon: ArrowLeftRight },
       { href: '/budget', label: 'งบประมาณ', icon: Wallet },
       { href: '/recurring', label: 'รายการประจำ', icon: Repeat },

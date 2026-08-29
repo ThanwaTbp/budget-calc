@@ -2,7 +2,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { DEFAULT_PALETTE, PALETTE_STORAGE_KEY, type PaletteId } from '@/constants/palettes'
+import { DEFAULT_PALETTE, PALETTE_IDS, PALETTE_STORAGE_KEY, type PaletteId } from '@/constants/palettes'
 
 interface IPaletteStore {
   palette: PaletteId
@@ -13,6 +13,10 @@ interface IPaletteStore {
 function applyPaletteToDocument(palette: PaletteId) {
   if (typeof document === 'undefined') return
   document.documentElement.dataset.palette = palette
+}
+
+function isPaletteId(value: unknown): value is PaletteId {
+  return typeof value === 'string' && PALETTE_IDS.some((paletteId) => paletteId === value)
 }
 
 export const usePaletteStore = create<IPaletteStore>()(
@@ -26,7 +30,18 @@ export const usePaletteStore = create<IPaletteStore>()(
     }),
     {
       name: PALETTE_STORAGE_KEY,
-      version: 1,
+      version: 2,
+      // รุ่นก่อนมี Emerald และ Warm Stone Teal ถ้าพบค่าเก่าให้ย้ายกลับมาใช้ Indigo แทน
+      migrate: (persistedState) => {
+        if (typeof persistedState !== 'object' || persistedState === null || !('palette' in persistedState)) {
+          return { palette: DEFAULT_PALETTE }
+        }
+
+        return {
+          ...persistedState,
+          palette: isPaletteId(persistedState.palette) ? persistedState.palette : DEFAULT_PALETTE,
+        }
+      },
       // ค่าที่อ่านกลับจาก localStorage ต้องถูกนำไปแปะบน <html> ทันทีหลัง rehydrate
       onRehydrateStorage: () => (state) => {
         if (state) applyPaletteToDocument(state.palette)
