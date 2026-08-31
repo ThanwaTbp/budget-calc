@@ -9,6 +9,7 @@ import {
   deleteRecurringItem,
   deleteTask,
   deleteTransaction,
+  deletePrivateNote,
   pushBudget,
   pushEmployee,
   pushLotteryTicket,
@@ -16,6 +17,7 @@ import {
   pushRecurringItem,
   pushTask,
   pushTransaction,
+  pushPrivateNote,
   toThaiSyncErrorMessage,
 } from '@/features/sync/services/remoteStore'
 import { useSyncStore } from '@/features/sync/store/useSyncStore'
@@ -24,6 +26,7 @@ import type { ITask } from '@/types/planner'
 import type { ILotteryTicket } from '@/types/lottery'
 import type { IBudget } from '@/types/budget'
 import type { IRecurringItem } from '@/types/recurring'
+import type { IPrivateNote } from '@/types/privateNotes'
 
 export type SyncEntityKind =
   | 'transaction'
@@ -33,6 +36,7 @@ export type SyncEntityKind =
   | 'lotteryTicket'
   | 'budget'
   | 'recurring'
+  | 'privateNote'
 export type SyncActionKind = 'upsert' | 'delete'
 
 interface ITransactionUpsertOperation {
@@ -126,6 +130,19 @@ interface IRecurringDeleteOperation {
   id: string
 }
 
+interface IPrivateNoteUpsertOperation {
+  kind: 'privateNote'
+  action: 'upsert'
+  id: string
+  payload: IPrivateNote
+}
+
+interface IPrivateNoteDeleteOperation {
+  kind: 'privateNote'
+  action: 'delete'
+  id: string
+}
+
 export type ISyncOperation =
   | ITransactionUpsertOperation
   | ITransactionDeleteOperation
@@ -141,6 +158,8 @@ export type ISyncOperation =
   | IBudgetDeleteOperation
   | IRecurringUpsertOperation
   | IRecurringDeleteOperation
+  | IPrivateNoteUpsertOperation
+  | IPrivateNoteDeleteOperation
 
 // ดีเลย์ retry แบบ exponential backoff: 2s, 4s, 8s, ... สูงสุด 30s
 const INITIAL_RETRY_DELAY_MS = 2000
@@ -219,6 +238,13 @@ async function processSyncOperation(userId: string, operation: ISyncOperation): 
         await pushRecurringItem(userId, operation.payload)
       } else {
         await deleteRecurringItem(operation.id)
+      }
+      return
+    case 'privateNote':
+      if (operation.action === 'upsert') {
+        await pushPrivateNote(userId, operation.payload)
+      } else {
+        await deletePrivateNote(operation.id)
       }
       return
   }

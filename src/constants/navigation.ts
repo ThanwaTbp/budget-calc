@@ -4,6 +4,7 @@ import {
   CalendarDays,
   CloudSun,
   Download,
+  NotebookPen,
   Repeat,
   Settings,
   Ticket,
@@ -45,6 +46,7 @@ export const NAV_GROUPS: INavGroup[] = [
     placement: 'main',
     items: [
       { href: '/planner', label: 'วางแผนงาน', icon: CalendarDays },
+      { href: '/private-notes', label: 'โน้ตส่วนตัว', icon: NotebookPen },
       { href: '/market', label: 'ราคาตลาด', icon: TrendingUp },
       { href: '/weather', label: 'สภาพอากาศ', icon: CloudSun },
       { href: '/lottery', label: 'ตรวจหวย', icon: Ticket },

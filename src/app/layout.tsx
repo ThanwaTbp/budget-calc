@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/layout/ThemeProvider'
 import { ConfirmProvider } from '@/components/common/ConfirmProvider'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/features/auth/ui/AuthProvider'
+import { PendingTaskAlert } from '@/features/planner/ui/PendingTaskAlert'
 import { DEFAULT_PALETTE, PALETTE_IDS, PALETTE_STORAGE_KEY } from '@/constants/palettes'
 import { DEFAULT_FONT_SIZE, FONT_SIZE_IDS, FONT_SIZE_STORAGE_KEY } from '@/constants/fontSizes'
 import './globals.css'
@@ -78,6 +79,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           <AuthProvider>
             <TooltipProvider delayDuration={200}>
               <ConfirmProvider>
+                <PendingTaskAlert />
                 {children}
                 <Toaster position="top-right" richColors duration={2500} />
               </ConfirmProvider>

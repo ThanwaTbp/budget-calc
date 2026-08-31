@@ -18,6 +18,7 @@ export const APPWRITE_COLLECTIONS = {
   lotteryTickets: 'bc_lottery_tickets',
   budgets: 'bc_budgets',
   recurring: 'bc_recurring',
+  privateNotes: 'bc_private_notes',
 } as const
 
 
@@ -139,5 +140,21 @@ export const APPWRITE_SCHEMA: IAppwriteCollectionSchema[] = [
       { key: 'createdAtIso', type: 'string', size: 32, required: true },
     ],
     indexes: [],
+  },
+  {
+    collectionId: APPWRITE_COLLECTIONS.privateNotes,
+    name: 'Private Notes',
+    attributes: [
+      { key: 'kind', type: 'string', size: 16, required: true },
+      { key: 'title', type: 'string', size: 160, required: false },
+      { key: 'content', type: 'string', size: 8192, required: false },
+      { key: 'tone', type: 'string', size: 16, required: false },
+      { key: 'isPinned', type: 'string', size: 8, required: true },
+      // ข้อมูลลับทั้งก้อนเป็น ciphertext + metadata สำหรับปลดล็อก ไม่มี plaintext ของหัวข้อหรือรหัสผ่าน
+      { key: 'secretJson', type: 'string', size: 16384, required: false },
+      { key: 'createdAtIso', type: 'string', size: 32, required: true },
+      { key: 'updatedAtIso', type: 'string', size: 32, required: true },
+    ],
+    indexes: [{ key: 'updatedAtIso_idx', type: 'key', attributes: ['updatedAtIso'] }],
   },
 ]

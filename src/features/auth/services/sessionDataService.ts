@@ -11,6 +11,7 @@ import { usePlannerStore } from '@/features/planner/store/usePlannerStore'
 import { useLotteryTicketStore } from '@/features/lottery/store/useLotteryTicketStore'
 import { useBudgetStore } from '@/features/budget/store/useBudgetStore'
 import { useRecurringStore } from '@/features/recurring/store/useRecurringStore'
+import { usePrivateNoteStore } from '@/features/privateNotes/store/usePrivateNoteStore'
 import { useWeatherLocationStore } from '@/features/weather/store/useWeatherLocationStore'
 import { useMenuSettingsStore } from '@/features/settings/store/useMenuSettingsStore'
 import { useSyncStore } from '@/features/sync/store/useSyncStore'
@@ -26,6 +27,7 @@ const SCOPED_STORE_NAMES = [
   'budget-calc:lottery',
   'budget-calc:budgets',
   'budget-calc:recurring',
+  'budget-calc:private-notes',
   'budget-calc:weather',
   'budget-calc:menu-settings',
 ]
@@ -52,6 +54,7 @@ export async function applyUserDataScope(
   useLotteryTicketStore.getState().onReset()
   useBudgetStore.getState().onReset()
   useRecurringStore.getState().onReset()
+  usePrivateNoteStore.getState().onReset()
   useWeatherLocationStore.getState().onReset()
   useMenuSettingsStore.getState().onReset()
   resumeStorageWrites()
@@ -69,6 +72,7 @@ export async function applyUserDataScope(
   await useLotteryTicketStore.persist.rehydrate()
   await useBudgetStore.persist.rehydrate()
   await useRecurringStore.persist.rehydrate()
+  await usePrivateNoteStore.persist.rehydrate()
   await useWeatherLocationStore.persist.rehydrate()
   await useMenuSettingsStore.persist.rehydrate()
 
@@ -105,7 +109,8 @@ async function syncRemoteSnapshotInBackground(userId: string): Promise<void> {
     remoteSnapshot.tasks.length === 0 &&
     remoteSnapshot.lotteryTickets.length === 0 &&
     remoteSnapshot.budgets.length === 0 &&
-    remoteSnapshot.recurringItems.length === 0
+    remoteSnapshot.recurringItems.length === 0 &&
+    remoteSnapshot.privateNotes.length === 0
 
   const localSnapshot: IRemoteSnapshot = {
     transactions: useTransactionStore.getState().transactions,
@@ -115,6 +120,7 @@ async function syncRemoteSnapshotInBackground(userId: string): Promise<void> {
     lotteryTickets: useLotteryTicketStore.getState().tickets,
     budgets: useBudgetStore.getState().budgets,
     recurringItems: useRecurringStore.getState().items,
+    privateNotes: usePrivateNoteStore.getState().notes,
   }
   const hasLocalData =
     localSnapshot.transactions.length > 0 ||
@@ -123,7 +129,8 @@ async function syncRemoteSnapshotInBackground(userId: string): Promise<void> {
     localSnapshot.tasks.length > 0 ||
     localSnapshot.lotteryTickets.length > 0 ||
     localSnapshot.budgets.length > 0 ||
-    localSnapshot.recurringItems.length > 0
+    localSnapshot.recurringItems.length > 0 ||
+    localSnapshot.privateNotes.length > 0
 
   if (isRemoteEmpty && hasLocalData) {
     try {
@@ -142,4 +149,5 @@ async function syncRemoteSnapshotInBackground(userId: string): Promise<void> {
   useLotteryTicketStore.getState().onReplaceAll(remoteSnapshot.lotteryTickets)
   useBudgetStore.getState().onReplaceAll(remoteSnapshot.budgets)
   useRecurringStore.getState().onReplaceAll(remoteSnapshot.recurringItems)
+  usePrivateNoteStore.getState().onReplaceAll(remoteSnapshot.privateNotes)
 }

@@ -117,11 +117,12 @@ const COLLECTION_LABELS: Record<keyof typeof APPWRITE_COLLECTIONS, string> = {
   payrollEntries: 'รอบจ่ายค่าจ้าง',
   tasks: 'งานในปฏิทิน',
   lotteryTickets: 'เลขหวยที่บันทึก',
+  privateNotes: 'โน้ตส่วนตัว',
   budgets: 'งบประมาณ',
   recurring: 'รายการประจำ',
 }
 
-// ตรวจว่า collection ที่แอปต้องใช้ครบทุกตัวไหม (จำกัด 100 แถวแรกก็เพียงพอเพราะแอปมีแค่ 7 collection ของตัวเอง)
+// ตรวจว่า collection ที่แอปต้องใช้ครบทุกตัวไหม (จำกัด 100 แถวแรกก็เพียงพอกับจำนวน collection ของแอป)
 async function checkAppwriteCollections(): Promise<ICheckResult> {
   const url = new URL(`${APPWRITE_ENDPOINT}/databases/${APPWRITE_DATABASE_ID}/collections`)
   url.searchParams.append('queries[]', JSON.stringify({ method: 'limit', values: [100] }))

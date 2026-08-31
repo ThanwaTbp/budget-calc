@@ -202,11 +202,12 @@ await usePayrollStore.persist.rehydrate()
 | `/forgot-password` | กรอกอีเมลเพื่อขอลิงก์รีเซ็ตรหัส |
 | `/reset-password` | ตั้งรหัสใหม่ (รับ `userId` + `secret` จาก query) |
 | `/profile` | แก้ชื่อที่แสดงและรหัสผ่าน · อีเมลเป็น read-only และห้ามมี action สำหรับเปลี่ยนอีเมล |
+| `/private-notes` | จดโน้ตส่วนตัวและเก็บข้อมูลลับที่เข้ารหัสด้วยรหัสหลัก |
 | `/` `/transactions` `/payroll` | ต้องล็อกอินก่อน ถ้ายังไม่ล็อกอินให้เด้งไป `/login` |
 
 ## โครงเมนูหลัก
 - **การเงิน**: รายรับ-รายจ่าย · งบประมาณ · รายการประจำ · ค่าจ้างพนักงาน
-- **งานและเครื่องมือ**: วางแผนงาน · ราคาตลาด · สภาพอากาศ · ตรวจหวย
+- **งานและเครื่องมือ**: วางแผนงาน · โน้ตส่วนตัว · ราคาตลาด · สภาพอากาศ · ตรวจหวย
 - **ข้อมูล**: ส่งออกข้อมูล
 - **ระบบ**: สถานะระบบ · ตั้งค่า — กลุ่มนี้ยึดด้านล่างของ sidebar และ **ตั้งค่าต้องอยู่ลำดับสุดท้ายเสมอ**
 - หน้าโปรไฟล์เข้าจากเมนูผู้ใช้บน TopBar เพื่อไม่ให้ sidebar แน่นเกินไป
@@ -292,6 +293,13 @@ type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline' | 'disable
 ---
 
 # ฟีเจอร์วางแผนงาน (Planner) — เพิ่มใน v5, ปรับ UX ใน v6
+
+## แจ้งเตือนงานค้างเมื่อเข้าเว็บ
+- หลังยืนยัน session และโหลดข้อมูลของบัญชีแล้ว ให้เปิด modal หนึ่งครั้งต่อการเข้าเว็บ หากมีงานสถานะ `todo` ที่ `date <= วันนี้`
+- รวมทั้งงานของวันนี้และงานเก่าที่เลยกำหนด โดยเรียงวันที่เก่าไปใหม่ และงานมีเวลาเรียงก่อนงานทั้งวัน
+- modal แสดงรายการไม่เกิน 5 งาน พร้อมจำนวนที่เหลือ และมีทางเลือก `ไว้ทีหลัง` / `เปิดหน้าวางแผนงาน`
+- ไม่เปิดซ้ำเมื่อเปลี่ยนหน้าภายในแอป แต่เมื่อ refresh หรือเปิดเว็บครั้งใหม่ให้ตรวจและแจ้งอีกครั้ง
+- ต้องรอ initial sync จบก่อนตรวจ เพื่อไม่พลาดงานที่มีอยู่บน Appwrite แต่ cache ในเครื่องยังว่าง หากซิงก์ช้าให้ fallback ไปใช้ cache ภายใน 3 วินาที
 
 ## เลือกใช้ `react-day-picker@10` (มีอยู่แล้วในโปรเจค เป็นฐานของ shadcn Calendar)
 เหตุผล: แอปมี **2 ชุดสีให้ผู้ใช้สลับ + light/dark** ถ้าใช้ FullCalendar / react-big-calendar / Schedule-X จะต้องสู้กับ CSS ของ lib เองตลอด
@@ -667,3 +675,33 @@ API ที่ตรวจสอบแล้วว่าใช้งานได�
 |---|---|
 | `bc_budgets` | `categoryId` string(64) req · `amount` double req · `createdAtIso` string(32) req |
 | `bc_recurring` | `type` string(16) req · `amount` double req · `categoryId` string(64) req · `note` string(256) · `dayOfMonth` double req · `isActive` string(8) req (เก็บเป็น `'true'`/`'false'` เพราะ schema helper รองรับแค่ string/float) · `lastPostedYearMonth` string(7) · `createdAtIso` string(32) req |
+
+---
+
+# ฟีเจอร์โน้ตส่วนตัว — `/private-notes`
+
+พื้นที่ส่วนตัวสำหรับจดข้อความทั่วไปและข้อมูลลับ โดยข้อมูลแยกตามบัญชีผู้ใช้เหมือน store อื่น และซิงก์ผ่าน Appwrite ด้วยสิทธิ์ระดับเอกสารเฉพาะเจ้าของ
+
+## โน้ตทั่วไป
+- มีหัวข้อ รายละเอียด สีโน้ต และปักหมุด
+- ค้นหาจากหัวข้อและเนื้อหาได้ทันที
+- เรียงโน้ตที่ปักหมุดก่อน แล้วเรียงตามเวลาที่แก้ไขล่าสุด
+
+## ข้อมูลลับ
+- ชื่อบริการ ชื่อผู้ใช้ รหัสผ่าน เว็บไซต์ และรายละเอียด ต้องถูกเข้ารหัส **ก่อน** เขียนลง localStorage หรือส่งขึ้น Appwrite
+- ใช้ AES-256-GCM และผูก ciphertext กับ note id ผ่าน additional authenticated data
+- สร้างกุญแจจากรหัสหลักด้วย PBKDF2-SHA256 600,000 รอบและ salt แบบสุ่มต่อคลัง
+- ห้าม persist หรือ sync รหัสหลักและกุญแจถอดรหัส เก็บกุญแจไว้ในหน่วยความจำเฉพาะช่วงที่ปลดล็อก
+- เมื่อล็อกต้องซ่อนทั้งหัวข้อและเนื้อหา และล้าง plaintext ที่ถอดแล้วออกจาก state
+- ล็อกอัตโนมัติภายใน 5 นาทีหลังปลดล็อก ผู้ใช้สั่งล็อกเองได้ทันที
+- หากลืมรหัสหลักจะกู้ข้อมูลลับไม่ได้ ต้องแจ้งผู้ใช้ก่อนสร้างคลังครั้งแรก
+
+store `usePrivateNoteStore` — persist key `budget-calc:private-notes` · `userScopedStorage` · sync kind `'privateNote'`
+
+## Appwrite collection
+
+| collection | attributes |
+|---|---|
+| `bc_private_notes` | `kind` string(16) req · `title` string(160) · `content` string(8192) · `tone` string(16) · `isPinned` string(8) req · `secretJson` string(16384) · `createdAtIso` string(32) req · `updatedAtIso` string(32) req |
+
+สำหรับ `kind === 'secret'` ฟิลด์ `title` / `content` ต้องเป็นค่าว่าง และเก็บเฉพาะ encrypted envelope ใน `secretJson` เท่านั้น

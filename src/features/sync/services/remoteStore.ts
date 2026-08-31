@@ -8,7 +8,9 @@ import type { ITask, TaskStatus } from '@/types/planner'
 import type { ILotteryTicket } from '@/types/lottery'
 import type { IBudget } from '@/types/budget'
 import type { IRecurringItem } from '@/types/recurring'
+import type { IPrivateNote, PrivateNoteTone } from '@/types/privateNotes'
 import type { TransactionType } from '@/types/finance'
+import { parseSecretEnvelope } from '@/features/privateNotes/utils/secretEnvelope'
 
 export interface IRemoteSnapshot {
   transactions: ITransaction[]
@@ -18,6 +20,7 @@ export interface IRemoteSnapshot {
   lotteryTickets: ILotteryTicket[]
   budgets: IBudget[]
   recurringItems: IRecurringItem[]
+  privateNotes: IPrivateNote[]
 }
 
 const appwriteDatabases = new Databases(appwriteClient)
@@ -85,6 +88,17 @@ interface IRecurringDocument extends Models.Document {
   isActive: string
   lastPostedYearMonth: string
   createdAtIso: string
+}
+
+interface IPrivateNoteDocument extends Models.Document {
+  kind: string
+  title: string
+  content: string
+  tone: string
+  isPinned: string
+  secretJson: string
+  createdAtIso: string
+  updatedAtIso: string
 }
 
 function buildOwnerPermissions(userId: string): string[] {
@@ -284,6 +298,64 @@ function mapRecurringEntityToDocumentData(item: IRecurringItem): Omit<IRecurring
   }
 }
 
+function toPrivateNoteTone(tone: string): PrivateNoteTone {
+  if (tone === 'warm' || tone === 'indigo' || tone === 'green') return tone
+  return 'neutral'
+}
+
+function mapPrivateNoteDocumentToEntity(document: IPrivateNoteDocument): IPrivateNote | null {
+  const sharedFields = {
+    id: document.$id,
+    isPinned: document.isPinned === 'true',
+    createdAt: document.createdAtIso,
+    updatedAt: document.updatedAtIso,
+  }
+
+  if (document.kind === 'secret') {
+    const secret = parseSecretEnvelope(document.secretJson)
+    if (!secret) return null
+
+    return { ...sharedFields, kind: 'secret', secret }
+  }
+
+  return {
+    ...sharedFields,
+    kind: 'note',
+    title: document.title ?? '',
+    content: document.content ?? '',
+    tone: toPrivateNoteTone(document.tone),
+  }
+}
+
+function mapPrivateNoteEntityToDocumentData(
+  note: IPrivateNote,
+): Omit<IPrivateNoteDocument, keyof Models.Document> {
+  const sharedFields = {
+    kind: note.kind,
+    isPinned: note.isPinned ? 'true' : 'false',
+    createdAtIso: note.createdAt,
+    updatedAtIso: note.updatedAt,
+  }
+
+  if (note.kind === 'secret') {
+    return {
+      ...sharedFields,
+      title: '',
+      content: '',
+      tone: 'neutral',
+      secretJson: JSON.stringify(note.secret),
+    }
+  }
+
+  return {
+    ...sharedFields,
+    title: note.title,
+    content: note.content,
+    tone: note.tone,
+    secretJson: '',
+  }
+}
+
 // วนดึงเอกสารทั้งหมดของ collection ด้วย cursor pagination จนครบ (listDocuments คืนแค่ 25 แถวแรกถ้าไม่ระบุ limit)
 async function fetchAllDocuments<Document extends Models.Document>(collectionId: string): Promise<Document[]> {
   const documents: Document[] = []
@@ -330,6 +402,7 @@ export async function pullSnapshot(userId: string): Promise<IRemoteSnapshot> {
     lotteryTicketDocuments,
     budgetDocuments,
     recurringDocuments,
+    privateNoteDocuments,
   ] = await Promise.all([
     fetchAllDocuments<ITransactionDocument>(APPWRITE_COLLECTIONS.transactions),
     fetchAllDocuments<IEmployeeDocument>(APPWRITE_COLLECTIONS.employees),
@@ -338,6 +411,7 @@ export async function pullSnapshot(userId: string): Promise<IRemoteSnapshot> {
     fetchAllDocuments<ILotteryTicketDocument>(APPWRITE_COLLECTIONS.lotteryTickets),
     fetchAllDocuments<IBudgetDocument>(APPWRITE_COLLECTIONS.budgets),
     fetchAllDocuments<IRecurringDocument>(APPWRITE_COLLECTIONS.recurring),
+    fetchAllDocuments<IPrivateNoteDocument>(APPWRITE_COLLECTIONS.privateNotes),
   ])
 
   return {
@@ -348,6 +422,9 @@ export async function pullSnapshot(userId: string): Promise<IRemoteSnapshot> {
     lotteryTickets: lotteryTicketDocuments.map(mapLotteryTicketDocumentToEntity),
     budgets: budgetDocuments.map(mapBudgetDocumentToEntity),
     recurringItems: recurringDocuments.map(mapRecurringDocumentToEntity),
+    privateNotes: privateNoteDocuments
+      .map(mapPrivateNoteDocumentToEntity)
+      .filter((note): note is IPrivateNote => note !== null),
   }
 }
 
@@ -477,6 +554,24 @@ export async function deleteRecurringItem(id: string): Promise<void> {
   })
 }
 
+export async function pushPrivateNote(userId: string, note: IPrivateNote): Promise<void> {
+  await appwriteDatabases.upsertDocument<IPrivateNoteDocument>({
+    databaseId: APPWRITE_DATABASE_ID,
+    collectionId: APPWRITE_COLLECTIONS.privateNotes,
+    documentId: note.id,
+    data: mapPrivateNoteEntityToDocumentData(note),
+    permissions: buildOwnerPermissions(userId),
+  })
+}
+
+export async function deletePrivateNote(id: string): Promise<void> {
+  await appwriteDatabases.deleteDocument({
+    databaseId: APPWRITE_DATABASE_ID,
+    collectionId: APPWRITE_COLLECTIONS.privateNotes,
+    documentId: id,
+  })
+}
+
 // อัปโหลด snapshot ทั้งก้อนขึ้น Appwrite ใช้ตอนย้ายข้อมูลครั้งแรก (ทยอยทีละชุดกันโดน rate limit)
 export async function pushSnapshot(userId: string, snapshot: IRemoteSnapshot): Promise<void> {
   await pushInBatches(snapshot.transactions, (transaction) => pushTransaction(userId, transaction))
@@ -486,6 +581,7 @@ export async function pushSnapshot(userId: string, snapshot: IRemoteSnapshot): P
   await pushInBatches(snapshot.lotteryTickets, (ticket) => pushLotteryTicket(userId, ticket))
   await pushInBatches(snapshot.budgets, (budget) => pushBudget(userId, budget))
   await pushInBatches(snapshot.recurringItems, (item) => pushRecurringItem(userId, item))
+  await pushInBatches(snapshot.privateNotes, (note) => pushPrivateNote(userId, note))
 }
 
 export function isRemoteReady(): boolean {
